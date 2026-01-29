@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Datos en Vivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos para scrollbars sutiles */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased">
+
+    <div class="max-w-6xl mx-auto px-4 py-6 sm:py-10">
+        <!-- Encabezado -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-blue-800">Panel de Control de Datos</h1>
+            <p class="text-gray-600">Sincronizado con Microsoft OneDrive en tiempo real.</p>
+        </header>
+
+        <!-- Navegación de Pestañas -->
+        <div class="flex border-b border-gray-200 mb-6 space-x-4">
+            <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-btn py-2 px-4 font-medium text-blue-600 border-b-2 border-blue-600 transition-all">
+                Pestaña 1: Ventas
+            </button>
+            <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-btn py-2 px-4 font-medium text-gray-500 hover:text-blue-600 transition-all border-b-2 border-transparent">
+                Pestaña 2: Inventario
+            </button>
+        </div>
+
+        <!-- Contenedores de Tablas -->
+        <div id="content-tab1" class="tab-content block">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse" id="table1">
+                        <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+                            <tr id="header1">
+                                <!-- Cabeceras dinámicas -->
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200" id="body1">
+                            <!-- Datos dinámicos -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="loader1" class="p-8 text-center text-gray-500">Cargando datos desde Excel...</div>
+            </div>
+        </div>
+
+        <div id="content-tab2" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse" id="table2">
+                        <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+                            <tr id="header2">
+                                <!-- Cabeceras dinámicas -->
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200" id="body2">
+                            <!-- Datos dinámicos -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="loader2" class="p-8 text-center text-gray-500">Cargando datos desde Excel...</div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-xs text-gray-400">
+            Actualizado automáticamente mediante GitHub Pages.
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * CONFIGURACIÓN DE URLs
+         * Sustituye estas URLs por tus enlaces de Excel publicados como CSV.
+         */
+        const EXCEL_URL_1 = 'https://unitednations.sharepoint.com/sites/SectorExterno/_layouts/15/download.aspx?sourcedoc={5f803e69-3d02-4c90-8d0a-c57c1fd61a14}'; 
+        const EXCEL_URL_2 = 'https://unitednations.sharepoint.com/sites/SectorExterno/_layouts/15/download.aspx?sourcedoc={5f803e69-3d02-4c90-8d0a-c57c1fd61a14}';
+
+        // Función para cambiar de pestaña
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('block'));
+            document.getElementById('content-' + tabId).classList.remove('hidden');
+            document.getElementById('content-' + tabId).classList.add('block');
+
+            // Actualizar estilos de botones
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-blue-600');
+                btn.classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById('btn-' + tabId).classList.add('text-blue-600', 'border-blue-600');
+            document.getElementById('btn-' + tabId).classList.remove('text-gray-500', 'border-transparent');
+        }
+
+        // Función para parsear CSV simple
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            return lines.map(line => {
+                // Maneja comas dentro de comillas si es necesario
+                return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            }).filter(row => row.length > 1);
+        }
+
+        // Cargar datos desde OneDrive
+        async function loadData(url, tableId, headerId, bodyId, loaderId) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('No se pudo conectar con el archivo');
+                
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+
+                if (data.length === 0) throw new Error('El archivo está vacío');
+
+                const headerRow = data[0];
+                const bodyRows = data.slice(1);
+
+                // Renderizar Cabecera
+                const headerHtml = headerRow.map(col => 
+                    `<th class="px-6 py-4 font-semibold tracking-wider border-b">${col.replace(/"/g, '')}</th>`
+                ).join('');
+                document.getElementById(headerId).innerHTML = headerHtml;
+
+                // Renderizar Cuerpo
+                const bodyHtml = bodyRows.map(row => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        ${row.map(cell => `<td class="px-6 py-4 text-sm text-gray-600 border-b">${cell.replace(/"/g, '')}</td>`).join('')}
+                    </tr>
+                `).join('');
+                document.getElementById(bodyId).innerHTML = bodyHtml;
+
+                // Ocultar loader
+                document.getElementById(loaderId).classList.add('hidden');
+
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                document.getElementById(loaderId).innerHTML = `<span class="text-red-500 font-medium">Error: No se pudo cargar la tabla. Verifica el enlace CSV.</span>`;
+            }
+        }
+
+        // Inicialización al cargar la ventana
+        window.onload = () => {
+            loadData(EXCEL_URL_1, 'table1', 'header1', 'body1', 'loader1');
+            loadData(EXCEL_URL_2, 'table2', 'header2', 'body2', 'loader2');
+        };
+    </script>
+</body>
+</html>
