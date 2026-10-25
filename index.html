@@ -1,0 +1,2219 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dinámica del PIB</title>
+<meta name="description" content="Arrastre estadístico y dinámica requerida del PIB por país.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PIB">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e8eef2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#060b10" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout: panel de una pantalla — encabezado con país, franja de proyecciones y pestañas; el contenido llena el alto disponible. En pantallas angostas, flujo normal con desplazamiento */
+:root {
+  --bg: #eef2f1;
+  --panel: #ffffff;
+  --well: #e4eae9;
+  --ink: #10202a;
+  --ink-2: #47585f;
+  --ink-3: #74838a;
+  --rule: #d6dedd;
+  --grid: #e8eded;
+  --track: #cdd6d5;
+  --obs: #2b6cb0;
+  --proj: #e0571a;
+  --carry: #0f9d8a;
+  --warn: #9a5b00;
+  --proj-wash: color-mix(in oklab, var(--proj) 7%, transparent);
+  --proj-ink: color-mix(in oklab, var(--proj) 82%, var(--ink));
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 10px;
+  /* App móvil: vidrio sobre aurora */
+  --m-bg: #e8eef2;
+  --m-a1: #a9e6db;
+  --m-a2: #ffcdb3;
+  --m-a3: #c3d0f6;
+  --m-glass: rgba(255, 255, 255, 0.58);
+  --m-glass-2: rgba(255, 255, 255, 0.78);
+  --m-bar: rgba(244, 248, 250, 0.72);
+  --m-stroke: rgba(255, 255, 255, 0.85);
+  --m-hair: rgba(16, 32, 42, 0.09);
+  --m-hi: rgba(255, 255, 255, 0.95);
+  --m-shadow: rgba(24, 44, 60, 0.16);
+  --m-ink: #0b1720;
+  --m-ink-2: #46555e;
+  --m-ink-3: #7b8a92;
+  --m-tint: #14324a;
+  --m-tint-ink: #ffffff;
+  --m-track: rgba(16, 32, 42, 0.12);
+  --m-req: #d9531a;
+  --m-carry: #0c917f;
+  --m-obs: #2b6cb0;
+  --m-thumb: #ffffff;
+  --f-round: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --f-sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1315; --panel: #151c20; --well: #10181b; --ink: #e6edef; --ink-2: #a7b5bb; --ink-3: #7a8a91;
+    --rule: #26323a; --grid: #1e2930; --track: #33424a;
+    --obs: #5591da; --proj: #e66b30; --carry: #22a891; --warn: #e0a54a;
+    --m-bg: #060b10; --m-a1: #0d4f49; --m-a2: #5b2612; --m-a3: #18295a;
+    --m-glass: rgba(30, 40, 48, 0.55); --m-glass-2: rgba(44, 56, 66, 0.78); --m-bar: rgba(12, 18, 24, 0.70);
+    --m-stroke: rgba(255, 255, 255, 0.11); --m-hair: rgba(255, 255, 255, 0.08); --m-hi: rgba(255, 255, 255, 0.10);
+    --m-shadow: rgba(0, 0, 0, 0.55); --m-ink: #eef4f7; --m-ink-2: #aab8bf; --m-ink-3: #7f8f97;
+    --m-tint: #eaf2f6; --m-tint-ink: #0b1720; --m-track: rgba(255, 255, 255, 0.16);
+    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1315; --panel: #151c20; --well: #10181b; --ink: #e6edef; --ink-2: #a7b5bb; --ink-3: #7a8a91;
+  --rule: #26323a; --grid: #1e2930; --track: #33424a;
+  --obs: #5591da; --proj: #e66b30; --carry: #22a891; --warn: #e0a54a;
+    --m-bg: #060b10; --m-a1: #0d4f49; --m-a2: #5b2612; --m-a3: #18295a;
+    --m-glass: rgba(30, 40, 48, 0.55); --m-glass-2: rgba(44, 56, 66, 0.78); --m-bar: rgba(12, 18, 24, 0.70);
+    --m-stroke: rgba(255, 255, 255, 0.11); --m-hair: rgba(255, 255, 255, 0.08); --m-hi: rgba(255, 255, 255, 0.10);
+    --m-shadow: rgba(0, 0, 0, 0.55); --m-ink: #eef4f7; --m-ink-2: #aab8bf; --m-ink-3: #7f8f97;
+    --m-tint: #eaf2f6; --m-tint-ink: #0b1720; --m-track: rgba(255, 255, 255, 0.16);
+    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 14px; line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+button { font: inherit; color: inherit; }
+.mono, .val { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+
+.app {
+  display: flex; flex-direction: column; gap: 10px;
+  max-width: 1720px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 14px;
+}
+
+/* Encabezado */
+.top { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+.top h1 { font-size: 21px; font-weight: 780; font-variation-settings: "wdth" 116; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; }
+.cbtns { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; flex: 1; }
+.cbtns input { position: absolute; opacity: 0; pointer-events: none; }
+.cbtns label {
+  display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2); font-weight: 600; font-size: 13px;
+  font-variation-settings: "wdth" 106; transition: background-color .12s, color .12s, border-color .12s;
+}
+.cbtns label:hover { border-color: var(--ink-3); color: var(--ink); }
+.cbtns input:checked + label { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.cbtns input:focus-visible + label { outline: 2px solid var(--proj); outline-offset: 2px; }
+.cbtns input:disabled + label { opacity: 0.45; cursor: not-allowed; text-decoration: line-through; }
+.src { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chip { font-family: var(--f-data); font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--panel); border: 1px solid var(--rule); color: var(--ink-2); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.chip b { color: var(--ink); font-weight: 600; }
+.chip.example { border-color: var(--proj); color: var(--proj-ink); background: var(--proj-wash); }
+.btn { border: 1px solid var(--rule); background: var(--panel); border-radius: 7px; padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--ink); white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn:focus-visible { outline: 2px solid var(--proj); outline-offset: 1px; }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); font-weight: 600; }
+
+/* Franja de proyecciones */
+.strip {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 30px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r); padding: 8px 16px;
+}
+.pctl { display: grid; grid-template-columns: auto 92px minmax(150px, 230px); align-items: center; gap: 12px; }
+.pctl label { display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.pctl label .yr { font-family: var(--f-display); font-weight: 760; font-size: 19px; font-variation-settings: "wdth" 116; color: var(--ink); }
+.numwrap { display: inline-flex; align-items: center; gap: 3px; }
+.numwrap .u { font-family: var(--f-data); font-size: 13px; color: var(--ink-3); }
+input.num {
+  width: 64px; padding: 4px 7px; border-radius: 6px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink);
+  font-family: var(--f-data); font-variant-numeric: tabular-nums; font-size: 13px; text-align: right;
+}
+input.num:focus-visible { outline: 2px solid var(--proj); outline-offset: 1px; border-color: transparent; }
+.pctl input.num { width: 74px; font-size: 17px; font-weight: 600; color: var(--proj-ink); padding: 3px 7px; }
+.strip-note { font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+
+/* Barras de desplazamiento horizontales */
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 26px; margin: 0; background: transparent; cursor: pointer;
+  --a: 50%; --b: 50%; --tc: var(--proj);
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--track) var(--a), var(--tc) var(--a), var(--tc) var(--b), var(--track) var(--b)); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--track) var(--a), var(--tc) var(--a), var(--tc) var(--b), var(--track) var(--b)); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; margin-top: -7px; background: var(--panel); border: 2px solid var(--tc); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--tc); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18); }
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in oklab, var(--proj) 30%, transparent); }
+input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px color-mix(in oklab, var(--proj) 30%, transparent); }
+.is-impl input[type="range"] { --tc: var(--ink-3); }
+
+/* Pestañas */
+.tabrow { flex: none; display: flex; align-items: center; gap: 8px 16px; border-bottom: 1px solid var(--rule); }
+.tabbar { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.tab-meta { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.tabbar button {
+  border: 0; background: transparent; padding: 7px 14px 9px; cursor: pointer; font-size: 14px; color: var(--ink-3); font-weight: 600;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; font-variation-settings: "wdth" 106;
+}
+.tabbar button:hover { color: var(--ink); }
+.tabbar button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabbar button:focus-visible { outline: 2px solid var(--proj); outline-offset: -2px; border-radius: 4px; }
+.tabbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.views { min-width: 0; }
+.view { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r); padding: 14px 16px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.card-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 14px; margin-bottom: 8px; flex: none; }
+.card-h h2 { font-size: 16px; font-weight: 720; font-variation-settings: "wdth" 110; }
+.card-h h2 .yr { font-size: 22px; margin-right: 6px; font-variation-settings: "wdth" 120; }
+.aside { font-size: 12px; color: var(--ink-3); }
+.aside b { font-family: var(--f-data); color: var(--proj-ink); font-weight: 600; }
+.none { font-size: 13px; color: var(--ink-3); margin: 0; }
+.warnline { color: var(--warn); }
+.gap-pos { color: var(--carry); } .gap-neg { color: var(--proj-ink); }
+
+/* Resumen: matriz por año */
+#v-res { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+.mx { display: grid; grid-template-columns: minmax(78px, 120px) repeat(3, minmax(0, 1fr)); column-gap: 14px; }
+.mx > * { min-width: 0; }
+.mx-h { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+.mx-r, .mx-c { border-top: 1px solid var(--rule); padding: 9px 0 8px; }
+.mx-r { font-family: var(--f-display); font-weight: 700; font-size: 15px; font-variation-settings: "wdth" 110; line-height: 1.2; }
+.mx-r small { display: block; font-family: var(--f-body); font-weight: 400; font-size: 11.5px; color: var(--ink-3); font-variation-settings: normal; margin-top: 2px; }
+.mx-c { display: flex; flex-direction: column; gap: 2px; }
+.mx-c .val { font-size: 23px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+.mx-c .val small { font-size: 12px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; margin-left: 3px; }
+.mx-c.req .val { color: var(--proj-ink); }
+.mx-c.man .val small { color: var(--warn); font-family: var(--f-body); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10.5px; }
+.linkbtn { align-self: flex-start; border: 0; background: none; padding: 0; margin-top: 2px; font-size: 11.5px; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.linkbtn:focus-visible { outline: 2px solid var(--proj); outline-offset: 2px; border-radius: 2px; }
+.mx-c .note { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; }
+.mx-na { color: var(--ink-3); font-size: 13px; }
+.sw { width: 9px; height: 9px; border-radius: 2px; flex: none; background: var(--ink); }
+.sw.carry { background: var(--carry); } .sw.proj { background: var(--proj); }
+
+/* Composición */
+.wf-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--rule); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 22px; }
+.wf-title { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.wf { display: grid; gap: 2px; min-width: 0; }
+.wf-g { font-family: var(--f-display); font-weight: 700; font-size: 13px; font-variation-settings: "wdth" 110; margin-bottom: 2px; }
+.wf-row { display: grid; grid-template-columns: minmax(84px, 42%) minmax(0, 1fr) 62px; gap: 8px; align-items: center; min-height: 22px; }
+.wf-lab { font-size: 12px; color: var(--ink-2); line-height: 1.2; }
+.wf-track { position: relative; height: 14px; }
+.wf-zero { position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--ink-3); }
+.wf-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; min-width: 2px; background: var(--ink); }
+.wf-row.carry .wf-bar { background: var(--carry); }
+.wf-row.dyn .wf-bar { background: var(--proj); }
+.wf-row.total .wf-bar { background: var(--ink); top: 0; bottom: 0; }
+.wf-row.total .wf-lab { color: var(--ink); font-weight: 600; }
+.wf-target { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--proj); border-radius: 1px; }
+.wf-val { font-family: var(--f-data); font-size: 12px; text-align: right; white-space: nowrap; }
+.wf-row.total .wf-val { font-weight: 600; }
+
+/* PIB y actividad: controles + gráficos */
+#v-gdp, #v-act { grid-template-columns: minmax(330px, 400px) minmax(0, 1fr); }
+.charts { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-height: 0; min-width: 0; }
+.blk { display: flex; flex-direction: column; gap: 6px; }
+.blk + .blk { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.blk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.blk-h h3 { font-size: 14px; font-weight: 700; font-variation-settings: "wdth" 108; }
+.blk-h h3 span { font-family: var(--f-body); font-weight: 400; font-size: 12px; color: var(--ink-3); margin-left: 6px; font-variation-settings: normal; }
+.seg { display: inline-grid; grid-auto-flow: column; background: var(--well); border-radius: 7px; padding: 2px; gap: 2px; flex: none; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { padding: 3px 9px; text-align: center; border-radius: 5px; cursor: pointer; font-size: 12px; color: var(--ink-2); line-height: 1.3; white-space: nowrap; }
+.seg input:checked + label { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.seg input:focus-visible + label { outline: 2px solid var(--proj); outline-offset: 1px; }
+.seg input:disabled + label { opacity: 0.45; cursor: not-allowed; }
+.all { display: grid; grid-template-columns: 46px minmax(0, 1fr) 64px; gap: 10px; align-items: center; }
+.all label { font-size: 12.5px; font-weight: 600; }
+.state { font-size: 12px; margin: 0; color: var(--ink-3); line-height: 1.35; }
+.state b { color: var(--ink-2); font-weight: 600; }
+
+/* Ecualizador: una barra vertical arrastrable por período */
+.eq { display: flex; gap: 4px; align-items: stretch; }
+.eq-col { flex: 1 1 0; max-width: 64px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.eq-num {
+  width: 100%; border: 1px solid transparent; background: transparent; color: var(--ink); border-radius: 4px; padding: 1px 0;
+  font-family: var(--f-data); font-variant-numeric: tabular-nums; font-size: 10.5px; text-align: center;
+}
+.eq-num:hover { border-color: var(--rule); }
+.eq-num:focus-visible { outline: 2px solid var(--proj); outline-offset: 0; background: var(--bg); }
+.eq-bar { position: relative; width: 100%; max-width: 30px; height: var(--eq-h, 92px); border-radius: 4px; background: var(--well); cursor: ns-resize; touch-action: none; }
+.eq-bar:focus-visible { outline: 2px solid var(--proj); outline-offset: 2px; }
+.eq-bar i { position: absolute; left: 0; right: 0; display: block; }
+.eq-zero { top: 50%; height: 1px; background: var(--ink-3); opacity: .7; }
+.eq-fill { background: var(--proj); border-radius: 2px; left: 3px !important; right: 3px !important; }
+.is-impl .eq-fill { background: var(--ink-3); opacity: .55; }
+.eq-knob { height: 3px; margin-top: -1.5px; background: var(--ink); border-radius: 2px; }
+.eq-lab { font-family: var(--f-data); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+
+/* Gráficos */
+.chart-card { padding-bottom: 10px; }
+.chart-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 4px; flex: none; }
+.chart-h h3 { font-size: 14px; font-weight: 700; font-variation-settings: "wdth" 108; }
+.chart-h h3 span { font-family: var(--f-body); font-weight: 400; font-size: 12px; color: var(--ink-3); margin-left: 6px; font-variation-settings: normal; }
+.legend { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 11.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lg { width: 18px; height: 0; border-top: 2px solid var(--ink); display: inline-block; }
+.lg.obs { border-color: var(--obs); }
+.lg.proj { border-color: var(--proj); border-top-style: dashed; }
+.lg.carry { border-color: var(--carry); border-top-style: dotted; border-top-width: 3px; }
+.lg.avg { border-color: var(--ink-3); }
+.lg.yy { border-color: var(--ink-2); }
+.lg.bar { width: 10px; height: 10px; border: 0; border-radius: 2px; background: var(--obs); }
+.lg.bar.p { background: var(--proj); }
+.chart { position: relative; width: 100%; flex: 1; min-height: 150px; touch-action: pan-y; }
+.chart svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
+.chart text { font-family: var(--f-data); font-size: 10.5px; fill: var(--ink-3); }
+.chart text.yl { font-family: var(--f-display); font-size: 11.5px; fill: var(--ink-2); font-weight: 600; }
+.chart .grid { stroke: var(--grid); stroke-width: 1; }
+.chart .zero { stroke: var(--ink-3); stroke-width: 1; }
+.chart .ysep { stroke: var(--rule); stroke-width: 1; }
+.chart .band { fill: var(--proj-wash); }
+.chart .l-obs { fill: none; stroke: var(--obs); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .l-proj { fill: none; stroke: var(--proj); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
+.chart .l-carry { fill: none; stroke: var(--carry); stroke-width: 2.5; stroke-dasharray: 0.5 4.5; stroke-linecap: round; }
+.chart .l-avg { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+.chart .l-yy { fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linejoin: round; }
+.chart .l-yy.p { stroke-dasharray: 4 3; }
+.chart .d-obs { fill: var(--obs); stroke: var(--panel); stroke-width: 2; }
+.chart .d-proj { fill: var(--panel); stroke: var(--proj); stroke-width: 2; }
+.chart .d-yy { fill: var(--ink-2); stroke: var(--panel); stroke-width: 1.5; }
+.chart .b-obs { fill: var(--obs); }
+.chart .b-proj { fill: var(--proj); }
+.chart .lbl-avg { font-size: 10px; fill: var(--ink-2); }
+.guide { position: absolute; top: 0; width: 1px; background: var(--ink-3); pointer-events: none; opacity: 0.6; }
+.tip {
+  position: absolute; z-index: 3; pointer-events: none; min-width: 150px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14); font-size: 12px; line-height: 1.4;
+}
+.tip .t { font-weight: 700; margin-bottom: 3px; font-family: var(--f-display); }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.tip .r span:first-child { color: var(--ink-3); }
+.tip .r span:last-child { font-family: var(--f-data); }
+.tip .s { color: var(--ink-3); font-size: 11px; margin-top: 3px; }
+
+/* Tabla */
+#v-tbl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; }
+.tblwrap { overflow-x: auto; min-height: 0; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; padding: 4px 6px; text-align: right; white-space: nowrap; }
+.tbl thead tr:first-child th { font-family: var(--f-display); font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ink); font-variation-settings: "wdth" 112; text-align: center; border-bottom: 1px solid var(--rule); }
+.tbl thead tr:last-child th { border-bottom: 1px solid var(--rule); }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl td { padding: 3px 6px; border-bottom: 1px solid var(--grid); text-align: right; font-family: var(--f-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl td:first-child { font-family: var(--f-body); color: var(--ink-2); }
+.tbl .g0 { border-left: 1px solid var(--rule); }
+.tbl td.sc { color: var(--proj-ink); background: var(--proj-wash); }
+.tbl tfoot td { font-weight: 600; border-bottom: 0; border-top: 1px solid var(--rule); }
+.tbl tfoot tr + tr td { border-top: 0; }
+.tbl-note { font-size: 11.5px; color: var(--ink-3); margin: 8px 0 0; }
+.tbl-note i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--proj-wash); border: 1px solid color-mix(in oklab, var(--proj) 35%, transparent); vertical-align: -1px; margin-right: 4px; }
+
+/* Datos y método */
+#v-dat { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; }
+#v-met { grid-template-columns: minmax(0, 1fr); align-content: start; }
+#v-met .method { columns: 2 360px; column-gap: 36px; display: block; }
+#v-met .method > div { break-inside: avoid; margin-bottom: 10px; display: grid; gap: 5px; }
+.ctab.sample { width: auto; }
+.drop {
+  border: 1.5px dashed var(--track); border-radius: 10px; padding: 14px; text-align: center;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; color: var(--ink-2); font-size: 13px; transition: border-color .12s, background-color .12s;
+}
+.drop.over { border-color: var(--proj); background: var(--proj-wash); }
+.dmsg { font-size: 12.5px; margin-top: 8px; color: var(--ink-3); }
+.dmsg:empty { display: none; }
+.dmsg.ok { color: var(--carry); }
+.dmsg.err { color: var(--warn); }
+.ctab { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+.ctab th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--rule); }
+.ctab td { padding: 4px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.ctab td.m { font-family: var(--f-data); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.ctab td.w { color: var(--warn); font-size: 12px; }
+.fmt { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 4px; }
+.fmt code { font-family: var(--f-data); font-size: 11.5px; background: var(--well); padding: 0 4px; border-radius: 4px; }
+.dbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.method { display: grid; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
+.method p { margin: 0; }
+.method b { color: var(--ink); }
+.fx { font-family: var(--f-data); font-size: 12px; background: var(--well); border-radius: 6px; padding: 4px 8px; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+.sub-t { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 14px 0 6px; }
+
+/* Panel de una pantalla en escritorio */
+@media (min-width: 980px) and (min-height: 560px) {
+  .app { height: 100%; min-height: 560px; }
+  .views { flex: 1; min-height: 0; }
+  .view { height: 100%; }
+  #v-gdp, #v-act { grid-template-rows: minmax(0, 1fr); }
+  #v-res > .card, #v-tbl > .card, #v-dat > .card, #v-met > .card { max-height: 100%; }
+}
+@media (min-width: 980px) and (min-height: 560px) and (max-height: 700px) {
+  .mx-c .val { font-size: 20px; }
+  .mx-r, .mx-c { padding: 7px 0 6px; }
+  .wf-wrap { margin-top: 10px; padding-top: 10px; }
+  .eq-bar { --eq-h: 60px; }
+  .card { padding: 12px 14px; }
+  .blk + .blk { margin-top: 8px; padding-top: 8px; }
+}
+@media (min-width: 980px) and (min-height: 880px) { .eq-bar { --eq-h: 124px; } }
+/* Escritorio con poca altura: flujo normal */
+@media (min-width: 980px) and (max-height: 559px) {
+  .strip { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+  #v-res, #v-gdp, #v-act, #v-tbl, #v-dat, #v-met { grid-template-columns: minmax(0, 1fr); }
+  .charts { grid-template-rows: none; }
+  .chart { flex: none; height: 230px; }
+  .tabrow { flex-wrap: wrap; }
+  .tab-meta { margin-left: 0; padding-bottom: 6px; }
+}
+@media (max-width: 560px) {
+  .top h1 { font-size: 18px; white-space: normal; }
+  .pctl { grid-template-columns: auto 86px minmax(0, 1fr); gap: 8px; width: 100%; }
+  .mx { grid-template-columns: 64px repeat(3, minmax(0, 1fr)); column-gap: 8px; }
+  .mx-c .val { font-size: 18px; }
+  .mx-c .val small { display: block; margin: 1px 0 0; }
+  .mx-h .sw { display: none; }
+  .wf-wrap { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Estado vacío y sincronización (escritorio) */
+.empty { max-width: 620px; margin: 40px auto 0; padding: 28px 30px; gap: 10px; }
+.empty h2 { font-size: 20px; font-weight: 740; font-variation-settings: "wdth" 112; }
+.empty p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 60ch; }
+.sync { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; color: var(--ink-2); margin: -2px 0 10px; }
+.sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.sync.ok .dot { background: var(--carry); }
+.sync.warn .dot { background: var(--warn); }
+.chip.cloud::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--carry); margin-right: 6px; vertical-align: 1px; }
+.chip.local::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-right: 6px; vertical-align: 1px; }
+
+.vh { position: fixed; left: -10000px; top: 0; width: 1px; height: 1px; opacity: 0; }
+/* ================= App móvil (pantallas angostas) ================= */
+.mob { display: none; }
+@media (max-width: 979px) {
+  .app { display: none !important; }
+  body { background: var(--m-bg); }
+  body::before { background: var(--m-bar); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+  .mob { display: block; }
+}
+.mob { position: relative; min-height: 100%; color: var(--m-ink); font-family: var(--f-sys); font-size: 16px; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
+.mob button { font-family: var(--f-sys); cursor: pointer; }
+.m-aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(70% 38% at 0% 0%, var(--m-a1) 0%, transparent 72%),
+    radial-gradient(60% 34% at 100% 22%, var(--m-a2) 0%, transparent 72%),
+    radial-gradient(80% 44% at 40% 100%, var(--m-a3) 0%, transparent 74%),
+    var(--m-bg); }
+.m-pad { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+.m-head { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding-top: 18px; padding-bottom: 8px; max-width: 640px; margin: 0 auto; }
+.m-title { font-family: var(--f-sys); font-size: 32px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.m-meta { margin: 4px 0 0; font-size: 13px; color: var(--m-ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.m-meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--m-ink-3); flex: none; }
+.m-meta.ok .dot { background: var(--m-carry); }
+.m-meta.warn .dot { background: var(--m-req); }
+.m-round {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--m-ink);
+  border: 0.5px solid var(--m-stroke); background: var(--m-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--m-hi), 0 6px 16px -6px var(--m-shadow);
+}
+.m-round svg { width: 21px; height: 21px; }
+.m-round:focus-visible, .m-chip:focus-visible, .m-sbtn:focus-visible, .m-primary:focus-visible, .m-plain:focus-visible { outline: 2px solid var(--m-req); outline-offset: 2px; }
+
+/* Países: una sola fila horizontal */
+.m-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; padding-block: 8px; background: var(--m-bar);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-bottom: 0.5px solid var(--m-hair); }
+.m-chips { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  padding: 2px max(18px, env(safe-area-inset-left, 0px)); max-width: 676px; margin: 0 auto; }
+.m-chips::-webkit-scrollbar { display: none; }
+.m-chip {
+  flex: none; scroll-snap-align: center; padding: 8px 16px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--m-ink); letter-spacing: -0.01em;
+  border: 0.5px solid var(--m-stroke); background: var(--m-glass); box-shadow: inset 0 1px 0 var(--m-hi);
+  transition: background-color .2s, color .2s, transform .15s;
+}
+.m-chip:active { transform: scale(0.96); }
+.m-chip[aria-checked="true"] { background: var(--m-tint); color: var(--m-tint-ink); border-color: transparent; box-shadow: 0 6px 14px -6px var(--m-shadow); }
+.m-chip:disabled { opacity: .4; text-decoration: line-through; }
+
+.m-main { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding-top: 14px; padding-bottom: max(28px, env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+.m-card {
+  position: relative; padding: 18px 18px 16px; border-radius: 30px; min-width: 0;
+  background: var(--m-glass); border: 0.5px solid var(--m-stroke);
+  -webkit-backdrop-filter: blur(32px) saturate(175%); backdrop-filter: blur(32px) saturate(175%);
+  box-shadow: inset 0 1px 0 var(--m-hi), 0 18px 40px -18px var(--m-shadow);
+}
+.m-yr { display: flex; align-items: baseline; gap: 10px; }
+.m-yr-n { font-family: var(--f-round); font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.m-yr-l { font-size: 15px; color: var(--m-ink-2); }
+.m-proj { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.m-lbl { font-size: 15px; color: var(--m-ink-2); }
+.m-lbl em { font-style: normal; color: var(--m-ink-3); margin-left: 4px; }
+.m-step { display: flex; align-items: center; gap: 6px; }
+.m-sbtn {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 500; line-height: 1; color: var(--m-ink);
+  border: 0.5px solid var(--m-stroke); background: var(--m-glass-2); box-shadow: inset 0 1px 0 var(--m-hi), 0 4px 10px -5px var(--m-shadow);
+}
+.m-sbtn:active { transform: scale(0.92); }
+.m-pv { display: inline-flex; align-items: baseline; gap: 1px; padding: 0 2px; }
+.m-pv input { width: 68px; border: 0; background: transparent; color: var(--m-ink); text-align: right; padding: 2px 0;
+  font-family: var(--f-round); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; border-radius: 8px; }
+.m-pv input:focus-visible { outline: 2px solid var(--m-req); outline-offset: 2px; }
+.m-pv span { font-family: var(--f-round); font-size: 17px; font-weight: 600; color: var(--m-ink-2); }
+.mob input.m-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; margin: 6px 0 2px; background: transparent; --p: 50%; touch-action: pan-y; }
+.mob input.m-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--m-tint) var(--p), var(--m-track) var(--p)); }
+.mob input.m-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--m-tint) var(--p), var(--m-track) var(--p)); }
+.mob input.m-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 38px; height: 24px; margin-top: -9px; border-radius: 12px; background: var(--m-thumb);
+  box-shadow: 0 0.5px 4px rgba(0, 0, 0, .14), 0 6px 14px rgba(0, 0, 0, .14), inset 0 0 0 0.5px rgba(0, 0, 0, .05); }
+.mob input.m-range::-moz-range-thumb { width: 38px; height: 24px; border: 0; border-radius: 12px; background: var(--m-thumb); box-shadow: 0 0.5px 4px rgba(0, 0, 0, .14), 0 6px 14px rgba(0, 0, 0, .14); }
+.mob input.m-range:focus-visible { outline: none; }
+.mob input.m-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in oklab, var(--m-req) 35%, transparent); }
+.m-hero { margin-top: 12px; padding-top: 14px; border-top: 0.5px solid var(--m-hair); display: grid; gap: 2px; }
+.m-big { display: flex; align-items: baseline; gap: 6px; font-family: var(--f-round); font-variant-numeric: tabular-nums; color: var(--m-req); }
+.m-big b { font-size: 56px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+.m-big small { font-size: 19px; font-weight: 600; color: var(--m-ink-2); }
+.m-sub { font-size: 14px; color: var(--m-ink-2); }
+.m-sub b { font-weight: 600; color: var(--m-ink); font-variant-numeric: tabular-nums; }
+.m-eq { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.m-eqi { padding: 9px 10px 8px; border-radius: 16px; background: var(--m-glass-2); border: 0.5px solid var(--m-stroke); box-shadow: inset 0 1px 0 var(--m-hi); min-width: 0; }
+.m-eqi span { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--m-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-eqi b { display: block; margin-top: 2px; font-family: var(--f-round); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+.m-eqi .d { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.m-eqi .d.c { background: var(--m-carry); } .m-eqi .d.r { background: var(--m-req); }
+.m-op { font-family: var(--f-round); font-size: 18px; font-weight: 600; color: var(--m-ink-3); }
+.m-warn { margin-top: 10px; font-size: 13px; color: var(--m-ink-2); padding: 8px 12px; border-radius: 14px; background: color-mix(in oklab, var(--m-req) 12%, transparent); }
+.m-card-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.m-card-h h2 { font-family: var(--f-sys); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.m-card-h span { font-size: 13px; color: var(--m-ink-3); }
+.m-chart { position: relative; height: 190px; margin-top: 8px; }
+.m-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.m-chart text { font-family: var(--f-round); font-size: 10.5px; fill: var(--m-ink-3); font-variant-numeric: tabular-nums; }
+.m-chart text.v { fill: var(--m-req); font-weight: 700; font-size: 10px; }
+.m-chart text.y { font-family: var(--f-sys); font-size: 12px; font-weight: 600; fill: var(--m-ink-2); }
+.m-chart .g { stroke: var(--m-hair); stroke-width: 1; }
+.m-chart .z { stroke: var(--m-ink-3); stroke-width: 1; opacity: .6; }
+.m-chart .bo { fill: var(--m-obs); }
+.m-chart .br { fill: var(--m-req); }
+.m-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 13px; color: var(--m-ink-2); }
+.m-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.m-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.m-foot { margin: 2px 4px 0; font-size: 12.5px; color: var(--m-ink-3); text-align: center; }
+.m-empty { text-align: center; padding: 28px 22px 24px; display: grid; gap: 10px; justify-items: center; }
+.m-empty h2 { font-size: 22px; font-weight: 750; letter-spacing: -0.01em; }
+.m-empty p { margin: 0; color: var(--m-ink-2); font-size: 15px; max-width: 32ch; }
+.m-primary { border: 0; border-radius: 999px; padding: 13px 22px; font-size: 16px; font-weight: 650; background: var(--m-tint); color: var(--m-tint-ink); box-shadow: 0 10px 22px -10px var(--m-shadow); }
+.m-plain { border: 0.5px solid var(--m-stroke); border-radius: 999px; padding: 12px 20px; font-size: 15px; font-weight: 600; color: var(--m-ink); background: var(--m-glass-2); box-shadow: inset 0 1px 0 var(--m-hi); }
+.m-primary:active, .m-plain:active { transform: scale(0.97); }
+
+/* Hoja inferior de datos */
+.m-back { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.28); opacity: 0; transition: opacity .25s; }
+.m-back.on { opacity: 1; }
+.m-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 86%; overflow-y: auto; border-radius: 34px 34px 0 0;
+  padding: 8px max(20px, env(safe-area-inset-right, 0px)) max(22px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background: linear-gradient(var(--m-glass-2), var(--m-glass-2)), var(--m-bg); -webkit-backdrop-filter: blur(40px) saturate(180%); backdrop-filter: blur(40px) saturate(180%);
+  border-top: 0.5px solid var(--m-stroke); box-shadow: 0 -20px 50px -20px var(--m-shadow); transform: translateY(100%); transition: transform .32s cubic-bezier(.2, .9, .25, 1); }
+.m-sheet.on { transform: none; }
+.m-grab { width: 38px; height: 5px; border-radius: 3px; background: var(--m-track); margin: 0 auto 10px; }
+.m-sheet-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.m-sheet-h h2 { font-size: 22px; font-weight: 750; }
+.m-close { border: 0; background: none; font-size: 17px; font-weight: 600; color: var(--m-ink); padding: 6px 2px; }
+.m-sync { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 18px; background: var(--m-glass); border: 0.5px solid var(--m-stroke); font-size: 14px; color: var(--m-ink-2); }
+.m-sync b { color: var(--m-ink); font-weight: 600; display: block; }
+.m-sync .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--m-ink-3); flex: none; }
+.m-sync.ok .dot { background: var(--m-carry); } .m-sync.warn .dot { background: var(--m-req); }
+.m-dlist { margin: 12px 0 0; padding: 0; list-style: none; border-radius: 18px; overflow: hidden; background: var(--m-glass); border: 0.5px solid var(--m-stroke); }
+.m-dlist:empty { display: none; }
+.m-dlist li { display: flex; justify-content: space-between; gap: 10px; padding: 11px 14px; font-size: 15px; }
+.m-dlist li + li { border-top: 0.5px solid var(--m-hair); }
+.m-dlist li span { color: var(--m-ink-2); font-variant-numeric: tabular-nums; font-family: var(--f-round); }
+.m-dlist li.bad span { color: var(--m-req); font-family: var(--f-sys); font-size: 13px; text-align: right; }
+.m-actions { display: grid; gap: 8px; margin-top: 14px; }
+.m-msg { margin: 10px 2px 0; font-size: 14px; color: var(--m-ink-2); }
+.m-msg:empty { display: none; }
+.m-msg.err { color: var(--m-req); }
+.m-msg.ok { color: var(--m-carry); }
+.m-note { margin: 12px 2px 0; font-size: 13px; color: var(--m-ink-3); }
+@media (prefers-reduced-motion: reduce) { .m-sheet, .m-back { transition: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Arrastre y dinámica del PIB</h1>
+    <div class="cbtns" id="cbtns" role="radiogroup" aria-label="País"></div>
+    <div class="src">
+      <span class="chip" id="src-chip"></span>
+      <button class="btn" id="btn-save-cloud" type="button" hidden>Guardar en la nube</button>
+      <button class="btn primary" id="btn-upload" type="button">Cargar Excel</button>
+    </div>
+  </header>
+
+  <section class="strip" aria-label="Proyección de crecimiento anual">
+    <div class="pctl">
+      <label for="n-projT"><span class="yr" id="lab-T">2026</span>Proyección PIB</label>
+      <span class="numwrap"><input class="num" id="n-projT" inputmode="decimal" autocomplete="off"><span class="u">%</span></span>
+      <input type="range" id="r-projT" step="0.05" aria-label="Proyección del año en curso">
+    </div>
+    <div class="pctl">
+      <label for="n-projT1"><span class="yr" id="lab-T1">2027</span>Proyección PIB</label>
+      <span class="numwrap"><input class="num" id="n-projT1" inputmode="decimal" autocomplete="off"><span class="u">%</span></span>
+      <input type="range" id="r-projT1" step="0.05" aria-label="Proyección del año siguiente">
+    </div>
+    <span class="strip-note">La actividad usa la misma meta (supuesto 1 a 1).</span>
+  </section>
+
+  <div class="tabrow">
+    <nav class="tabbar" role="tablist" aria-label="Vistas">
+      <button type="button" role="tab" id="t-res" aria-controls="v-res">Resumen</button>
+      <button type="button" role="tab" id="t-gdp" aria-controls="v-gdp">PIB</button>
+      <button type="button" role="tab" id="t-act" aria-controls="v-act">Actividad</button>
+      <button type="button" role="tab" id="t-tbl" aria-controls="v-tbl">Tabla</button>
+      <button type="button" role="tab" id="t-dat" aria-controls="v-dat">Datos</button>
+      <button type="button" role="tab" id="t-met" aria-controls="v-met">Método</button>
+    </nav>
+    <div class="tab-meta" id="cmeta"></div>
+  </div>
+
+  <main class="views">
+    <!-- Sin datos -->
+    <section class="view" id="v-empty" hidden>
+      <div class="card empty">
+        <h2 id="empty-t">Buscando tus datos…</h2>
+        <p id="empty-p">Se están leyendo los datos guardados de este artefacto.</p>
+        <div class="dbtns" id="empty-btns" hidden>
+          <button class="btn primary" id="empty-upload" type="button">Cargar Excel</button>
+          <button class="btn" id="empty-example" type="button">Ver datos de ejemplo</button>
+        </div>
+      </div>
+    </section>
+    <!-- Resumen -->
+    <section class="view" id="v-res" role="tabpanel" aria-labelledby="t-res">
+      <div class="card" id="yc-T"></div>
+      <div class="card" id="yc-T1"></div>
+    </section>
+
+    <!-- PIB -->
+    <section class="view" id="v-gdp" role="tabpanel" aria-labelledby="t-gdp" hidden>
+      <div class="card">
+        <div class="card-h"><h2>Tasas del PIB</h2><span class="aside">t/t, % · arrastra las barras</span></div>
+        <div class="blk" id="blk-gT">
+          <div class="blk-h"><h3 id="h-gT">Resto del año</h3>
+            <div class="seg" role="radiogroup" aria-label="Tasas del PIB para el resto del año">
+              <input type="radio" name="m-gT" id="m-gT-impl" value="impl"><label for="m-gT-impl">Requerida</label>
+              <input type="radio" name="m-gT" id="m-gT-man" value="manual"><label for="m-gT-man">Manual</label>
+            </div>
+          </div>
+          <div id="eq-gT"></div>
+          <p class="state" id="st-gT"></p>
+        </div>
+        <div class="blk" id="blk-gN">
+          <div class="blk-h"><h3 id="h-gN">Año siguiente</h3>
+            <div class="seg" role="radiogroup" aria-label="Tasas del PIB para el año siguiente">
+              <input type="radio" name="m-gN" id="m-gN-impl" value="impl"><label for="m-gN-impl">Requerida</label>
+              <input type="radio" name="m-gN" id="m-gN-man" value="manual"><label for="m-gN-man">Manual</label>
+            </div>
+          </div>
+          <div id="eq-gN"></div>
+          <p class="state" id="st-gN"></p>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="card chart-card">
+          <div class="chart-h"><h3>PIB desestacionalizado<span id="gl-sub"></span></h3>
+            <div class="legend"><span><i class="lg obs"></i>Observado</span><span><i class="lg proj"></i>Escenario</span><span><i class="lg carry"></i>Arrastre</span><span><i class="lg avg"></i>Promedio anual</span></div>
+          </div>
+          <div class="chart" id="ch-gl"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="chart-h"><h3>Variación del PIB<span>%</span></h3>
+            <div class="legend"><span><i class="lg bar"></i>t/t observada</span><span><i class="lg bar p"></i>t/t escenario</span><span><i class="lg yy"></i>a/a</span></div>
+          </div>
+          <div class="chart" id="ch-gg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actividad -->
+    <section class="view" id="v-act" role="tabpanel" aria-labelledby="t-act" hidden>
+      <div class="card">
+        <div class="card-h"><h2>Tasas de la actividad</h2><span class="aside">m/m, % · arrastra las barras</span></div>
+        <p class="none" id="act-none" hidden></p>
+        <div id="act-body">
+          <div class="blk" id="blk-aT">
+            <div class="blk-h"><h3 id="h-aT">Resto del año</h3>
+              <div class="seg" role="radiogroup" aria-label="Tasas de la actividad para el resto del año">
+                <input type="radio" name="m-aT" id="m-aT-impl" value="impl"><label for="m-aT-impl">Requerida</label>
+                <input type="radio" name="m-aT" id="m-aT-man" value="manual"><label for="m-aT-man">Manual</label>
+              </div>
+            </div>
+            <div id="eq-aT"></div>
+            <p class="state" id="st-aT"></p>
+          </div>
+          <div class="blk" id="blk-aN">
+            <div class="blk-h"><h3 id="h-aN">Año siguiente</h3>
+              <div class="seg" role="radiogroup" aria-label="Tasas de la actividad para el año siguiente">
+                <input type="radio" name="m-aN" id="m-aN-impl" value="impl"><label for="m-aN-impl">Requerida</label>
+                <input type="radio" name="m-aN" id="m-aN-man" value="manual"><label for="m-aN-man">Manual</label>
+              </div>
+            </div>
+            <div id="eq-aN"></div>
+            <p class="state" id="st-aN"></p>
+          </div>
+        </div>
+      </div>
+      <div class="charts" id="act-charts">
+        <div class="card chart-card">
+          <div class="chart-h"><h3>Actividad desestacionalizada<span id="al-sub"></span></h3>
+            <div class="legend"><span><i class="lg obs"></i>Observada</span><span><i class="lg proj"></i>Escenario</span><span><i class="lg carry"></i>Arrastre</span><span><i class="lg avg"></i>Promedio anual</span></div>
+          </div>
+          <div class="chart" id="ch-al"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="chart-h"><h3>Variación de la actividad<span>%</span></h3>
+            <div class="legend"><span><i class="lg bar"></i>m/m observada</span><span><i class="lg bar p"></i>m/m escenario</span><span><i class="lg yy"></i>a/a</span></div>
+          </div>
+          <div class="chart" id="ch-ag"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabla -->
+    <section class="view" id="v-tbl" role="tabpanel" aria-labelledby="t-tbl" hidden>
+      <div class="card">
+        <div class="card-h"><h2>PIB trimestral</h2><button class="btn" id="copy-g" type="button">Copiar datos</button></div>
+        <div class="tblwrap"><table class="tbl" id="tbl-g"></table></div>
+        <p class="tbl-note"><i></i>Escenario. Índice: promedio del primer año = 100.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Actividad mensual</h2><button class="btn" id="copy-a" type="button">Copiar datos</button></div>
+        <div class="tblwrap"><table class="tbl" id="tbl-a"></table></div>
+        <p class="tbl-note"><i></i>Escenario. «Copiar datos» copia la serie completa con niveles para pegar en Excel.</p>
+      </div>
+      <textarea id="copy-fallback" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;top:0;width:1px;height:1px"></textarea>
+    </section>
+
+    <!-- Datos -->
+    <section class="view" id="v-dat" role="tabpanel" aria-labelledby="t-dat" hidden>
+      <div class="card">
+        <div class="card-h"><h2>Datos</h2><span class="aside" id="data-aside"></span></div>
+        <div class="sync" id="sync-line"><i class="dot"></i><span id="sync-text">Conectando…</span></div>
+        <div class="drop" id="drop">
+          <span>Arrastra aquí el archivo Excel o</span>
+          <button class="btn" id="btn-pick" type="button">Elegir archivo</button>
+          <button class="btn" id="btn-example" type="button">Ver datos de ejemplo</button>
+          <button class="btn" id="btn-mine" type="button" hidden>Volver a mis datos</button>
+        </div>
+        <div class="dmsg" id="msg-file" role="status"></div>
+        <div class="tblwrap"><table class="ctab" id="ctab"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Formato del archivo</h2><span class="aside">se lee en tu navegador y se guarda en el artefacto</span></div>
+        <ul class="fmt">
+          <li>Una hoja trimestral con el PIB y otra mensual con la actividad, desestacionalizadas y en niveles (no tasas). Las hojas se reconocen por la frecuencia de sus fechas.</li>
+          <li>Una columna de fechas y una columna por país, con el nombre del país en el encabezado. Los nombres deben ser iguales en ambas hojas.</li>
+          <li>Fechas de Excel o texto como <code>2026T2</code>, <code>2026Q2</code>, <code>2026-08</code> o <code>ago-26</code>. También sirve el formato largo con columnas <code>país</code>, <code>fecha</code> y <code>valor</code>.</li>
+        </ul>
+        <div class="sub-t">Ejemplo de hoja trimestral</div>
+        <div class="tblwrap"><table class="ctab sample">
+          <thead><tr><th>Fecha</th><th>ARG</th><th>BRA</th><th>CHL</th><th>…</th></tr></thead>
+          <tbody>
+            <tr><td class="m">01-03-2025</td><td class="m">183706.4</td><td class="m">342065.2</td><td class="m">53722.2</td><td class="m">…</td></tr>
+            <tr><td class="m">01-06-2025</td><td class="m">184321.6</td><td class="m">343294.1</td><td class="m">54089.6</td><td class="m">…</td></tr>
+            <tr><td class="m">…</td><td class="m">…</td><td class="m">…</td><td class="m">…</td><td class="m"></td></tr>
+          </tbody>
+        </table></div>
+        <p class="tbl-note">La hoja mensual sigue la misma estructura, con una fila por mes.</p>
+      </div>
+    </section>
+
+    <!-- Método -->
+    <section class="view" id="v-met" role="tabpanel" aria-labelledby="t-met" hidden>
+      <div class="card">
+        <div class="card-h"><h2>Cómo se calcula</h2></div>
+        <div class="method">
+          <div>
+            <p><b>Crecimiento anual.</b> Suma de los períodos desestacionalizados del año respecto de la suma del año anterior.</p>
+            <div class="fx">g(año) = Σ X(año) / Σ X(año−1) − 1</div>
+          </div>
+          <div><p><b>Arrastre.</b> Crecimiento del año si la serie se queda en el nivel del último dato publicado.</p></div>
+          <div>
+            <p><b>Dinámica requerida del PIB.</b> Variación t/t constante desde el último trimestre publicado que hace que el año crezca lo proyectado. Se calcula solo con el PIB y se resuelve en forma exacta; en Excel equivale a:</p>
+            <div class="fx">=TASA(n; −X(último); 0; (1+proy)·Σ X(año−1) − Σ observados; 1)</div>
+          </div>
+          <div><p><b>Actividad.</b> El mismo ejercicio con la serie mensual: último mes constante para el arrastre y m/m constante para que la actividad crezca lo mismo que la proyección del PIB. La actividad no se mueve 1 a 1 con el PIB; el supuesto da una referencia del ritmo mensual coherente con la proyección.</p></div>
+          <div>
+            <p><b>Año siguiente.</b> El arrastre es el nivel del 4T (PIB) o de diciembre (actividad) del escenario del año en curso, mantenido todo el año. La dinámica requerida es la tasa constante desde ese nivel.</p>
+            <div class="fx">arrastre(año+1) = P · X(último período del año) / Σ X(año) − 1, con P = 4 o 12</div>
+          </div>
+          <div><p><b>Escenario.</b> Crecimiento del año con las tasas activas. Con la dinámica requerida es igual a la proyección por construcción. Si se arrastra una barra, ese bloque pasa a tasas manuales y el escenario muestra la distancia a la proyección; al cambiar la proyección o elegir «Requerida» se vuelve a la tasa constante.</p></div>
+          <div><p><b>Anualizadas.</b> (1 + t/t)⁴ − 1 y (1 + m/m)¹² − 1. <b>Promedio reciente:</b> últimos 4 trimestres del PIB y últimos 6 meses de la actividad.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<input type="file" id="file" class="vh" accept=".xlsx,.xlsm,.xls,.ods" tabindex="-1" aria-hidden="true">
+<div class="mob" id="mob">
+  <div class="m-aurora" aria-hidden="true"></div>
+  <header class="m-head m-pad">
+    <div>
+      <h1 class="m-title">Dinámica del PIB</h1>
+      <p class="m-meta" id="m-meta"><i class="dot"></i><span>Conectando…</span></p>
+    </div>
+    <button class="m-round" id="m-open" type="button" aria-label="Datos y archivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 13.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </header>
+  <nav class="m-bar" aria-label="País"><div class="m-chips" id="m-chips" role="radiogroup" aria-label="País"></div></nav>
+  <main class="m-main m-pad">
+    <section class="m-card m-empty" id="m-empty" hidden>
+      <h2 id="m-empty-t">Buscando tus datos…</h2>
+      <p id="m-empty-p">Se están leyendo los datos guardados.</p>
+      <button class="m-primary" id="m-empty-up" type="button" hidden>Cargar Excel</button>
+      <button class="m-plain" id="m-empty-ex" type="button" hidden>Ver datos de ejemplo</button>
+    </section>
+    <section class="m-card" id="m-T" hidden></section>
+    <section class="m-card" id="m-T1" hidden></section>
+    <section class="m-card" id="m-ch" hidden>
+      <div class="m-card-h"><h2>Variación t/t del PIB</h2><span>%</span></div>
+      <div class="m-chart" id="m-chart"></div>
+      <div class="m-legend"><span><i style="background:var(--m-obs)"></i>Observada</span><span><i style="background:var(--m-req)"></i>Requerida</span></div>
+    </section>
+    <p class="m-foot" id="m-foot" hidden>PIB desestacionalizado. Para ver la actividad y las tasas manuales, abre el artefacto en el computador.</p>
+  </main>
+  <div class="m-back" id="m-back" hidden></div>
+  <section class="m-sheet" id="m-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="m-sheet-t">
+    <div class="m-grab"></div>
+    <div class="m-sheet-h"><h2 id="m-sheet-t">Datos</h2><button class="m-close" id="m-close" type="button">Listo</button></div>
+    <div class="m-sync" id="m-sync"><i class="dot"></i><div id="m-sync-text"></div></div>
+    <ul class="m-dlist" id="m-dlist"></ul>
+    <div class="m-msg" id="m-msg" role="status"></div>
+    <div class="m-actions">
+      <button class="m-primary" id="m-up" type="button">Cargar Excel</button>
+      <button class="m-plain" id="m-save" type="button" hidden>Guardar en la nube</button>
+      <button class="m-plain" id="m-ex" type="button">Ver datos de ejemplo</button>
+      <button class="m-plain" id="m-mine" type="button" hidden>Volver a mis datos</button>
+    </div>
+    <p class="m-note" id="m-note">El Excel debe tener una hoja trimestral con el PIB desestacionalizado por país. Lo que cargues queda guardado y se ve en tus otros dispositivos.</p>
+  </section>
+</div>
+
+<script>
+// Motor de cálculo: arrastre estadístico y dinámica requerida (sin dependencias del DOM)
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_LARGOS = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+const qLabel = qi => `${Math.floor(qi/4)}T${qi%4+1}`;
+const mLabel = mi => `${MESES[mi%12]} ${Math.floor(mi/12)}`;
+
+/* ---------- Lectura de números y fechas ---------- */
+function parseNum(s) {
+  if (typeof s === 'number') return s;
+  s = String(s).trim().replace(/\s/g,'').replace(/−/g,'-');
+  if (!s) return NaN;
+  const hasDot = s.includes('.'), hasComma = s.includes(',');
+  if (hasDot && hasComma) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g,'').replace(',', '.');
+    else s = s.replace(/,/g,'');
+  } else if (hasComma) {
+    s = (s.match(/,/g).length > 1) ? s.replace(/,/g,'') : s.replace(',', '.');
+  } else if (hasDot && s.match(/\./g).length > 1) {
+    s = s.replace(/\./g,'');
+  }
+  if (!/^-?\d*\.?\d+(e-?\d+)?$/i.test(s)) return NaN;
+  return parseFloat(s);
+}
+function fullYear(y) { y = +y; return y < 100 ? (y < 70 ? 2000 + y : 1900 + y) : y; }
+function monthName(w) {
+  w = w.normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if (MESES_LARGOS[w]) return MESES_LARGOS[w];
+  const ab = {ene:1,jan:1,feb:2,mar:3,abr:4,apr:4,may:5,jun:6,jul:7,ago:8,aug:8,sep:9,set:9,oct:10,nov:11,dic:12,dec:12};
+  return ab[w.slice(0,3)] || null;
+}
+// Índice de mes (año*12 + mes-1) o null
+function parseMonth(raw) {
+  const s = String(raw).trim().toLowerCase().replace(/\./g,'');
+  let m;
+  const mi = (y, mo) => (mo >= 1 && mo <= 12 && y > 1900 && y < 2200) ? y * 12 + mo - 1 : null;
+  if ((m = s.match(/^(\d{4})\s*[-\/ ]?\s*m\s*(\d{1,2})$/))) return mi(+m[1], +m[2]);
+  if ((m = s.match(/^(\d{4})[-\/](\d{1,2})(?:[-\/]\d{1,2})?(?:[ t].*)?$/))) return mi(+m[1], +m[2]);
+  if ((m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})(?: .*)?$/))) return mi(fullYear(m[3]), +m[2]);
+  if ((m = s.match(/^(\d{1,2})[-\/](\d{4})$/))) return mi(+m[2], +m[1]);
+  if ((m = s.match(/^(\d{4})(\d{2})$/))) return mi(+m[1], +m[2]);
+  if ((m = s.match(/^([a-záéíóú]+)\s*[-\/ ]?\s*(?:de\s+)?(\d{2,4})$/))) { const mm = monthName(m[1]); if (mm) return mi(fullYear(m[2]), mm); }
+  if ((m = s.match(/^(\d{4})\s*[-\/ ]?\s*([a-záéíóú]+)$/))) { const mm = monthName(m[2]); if (mm) return mi(+m[1], mm); }
+  return null;
+}
+// Índice de trimestre (año*4 + trimestre-1) o null; solo formatos explícitos de trimestre
+function parseQuarterStr(raw) {
+  const s = String(raw).trim().toLowerCase().replace(/\./g,'');
+  let m;
+  if ((m = s.match(/^(\d{4})\s*[-\/ ]?\s*[tq]\s*([1-4])$/))) return +m[1] * 4 + (+m[2] - 1);
+  if ((m = s.match(/^([1-4])\s*[tq]\s*[-\/ ]?\s*(\d{2,4})$/))) return fullYear(m[2]) * 4 + (+m[1] - 1);
+  if ((m = s.match(/^[tq]\s*([1-4])\s*[-\/ ]?\s*(\d{2,4})$/))) return fullYear(m[2]) * 4 + (+m[1] - 1);
+  if ((m = s.match(/^(i{1,3}|iv)\s*[tq]?\s*[-\/ ]?\s*(\d{4})$/))) return +m[2] * 4 + ({i:0,ii:1,iii:2,iv:3}[m[1]]);
+  return null;
+}
+// Celda de fecha → {q} (trimestre explícito) o {m} (mes) o null
+function parseDateCell(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+    const d = new Date(v.getTime() + 12 * 3600e3); // evita corrimientos por zona horaria
+    return { m: d.getFullYear() * 12 + d.getMonth() };
+  }
+  if (typeof v === 'number') return null;
+  const q = parseQuarterStr(v);
+  if (q !== null) return { q };
+  const m = parseMonth(v);
+  if (m !== null) return { m };
+  return null;
+}
+
+/* ---------- Lectura del Excel (arreglos de filas) ---------- */
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+const isBlank = v => v === null || v === undefined || (typeof v === 'string' && !v.trim());
+const cellNum = v => {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return parseNum(v);
+  return NaN;
+};
+
+// Analiza una hoja. rows: arreglo de filas (header:1). Devuelve {freq, series:[{name, pts:[[idx,val]...]}]} o {error}
+function parseSheet(rows) {
+  rows = rows.filter(r => Array.isArray(r));
+  if (!rows.length) return { error: 'La hoja está vacía.' };
+  const ncol = Math.max(...rows.map(r => r.length));
+  // Columna de fechas: la de más celdas reconocibles entre las primeras seis
+  let dateCol = -1, best = 0;
+  for (let c = 0; c < Math.min(ncol, 6); c++) {
+    let n = 0; for (const r of rows) if (parseDateCell(r[c])) n++;
+    if (n > best) { best = n; dateCol = c; }
+  }
+  if (dateCol < 0 || best < 4) return { error: 'No se encontró una columna de fechas.' };
+  const dataRows = [];
+  rows.forEach((r, i) => { const d = parseDateCell(r[dateCol]); if (d) dataRows.push({ i, d, r }); });
+  const firstData = dataRows[0].i;
+
+  // Frecuencia
+  let freq;
+  const qCount = dataRows.filter(x => 'q' in x.d).length;
+  if (qCount > dataRows.length / 2) freq = 'q';
+  else {
+    const ms = [...new Set(dataRows.filter(x => 'm' in x.d).map(x => x.d.m))].sort((a, b) => a - b);
+    const diffs = {}; for (let i = 1; i < ms.length; i++) { const k = ms[i] - ms[i - 1]; diffs[k] = (diffs[k] || 0) + 1; }
+    const mode = +Object.entries(diffs).sort((a, b) => b[1] - a[1])[0]?.[0];
+    freq = mode === 3 ? 'q' : mode === 1 ? 'm' : null;
+    if (!freq) return { error: 'Las fechas no son mensuales ni trimestrales.' };
+  }
+  const idxOf = d => freq === 'q' ? ('q' in d ? d.q : Math.floor(d.m / 3)) : ('m' in d ? d.m : null);
+
+  // ¿Formato largo? (columna de país con texto repetido)
+  const header = rows.slice(0, firstData);
+  const headName = c => { for (const h of header) if (!isBlank(h[c]) && typeof h[c] === 'string') return h[c].trim(); for (const h of header) if (!isBlank(h[c])) return String(h[c]).trim(); return ''; };
+  let countryCol = -1;
+  for (let c = 0; c < ncol; c++) {
+    if (c === dateCol) continue;
+    const hn = norm(headName(c));
+    const texts = dataRows.map(x => x.r[c]).filter(v => typeof v === 'string' && v.trim() && !isFinite(parseNum(v)));
+    const uniq = new Set(texts.map(norm));
+    if (texts.length > dataRows.length * 0.8 && uniq.size < texts.length / 2 && (uniq.size > 1 || /^(pais|country|economia|nombre|iso)/.test(hn))) { countryCol = c; break; }
+  }
+  const map = new Map(); // nombre → Map(idx → val)
+  const add = (name, idx, val) => {
+    if (!map.has(name)) map.set(name, new Map());
+    const s = map.get(name);
+    if (s.has(idx)) s.set(idx, NaN); else s.set(idx, val);
+  };
+  if (countryCol >= 0) {
+    // Columna de valores: preferir encabezado reconocible, si no la primera numérica
+    let valCol = -1;
+    for (let c = 0; c < ncol; c++) if (c !== dateCol && c !== countryCol && /^(valor|value|nivel|pib|gdp|actividad|indice|imacec|serie|dato)/.test(norm(headName(c)))) { valCol = c; break; }
+    if (valCol < 0) for (let c = 0; c < ncol; c++) {
+      if (c === dateCol || c === countryCol) continue;
+      if (dataRows.filter(x => isFinite(cellNum(x.r[c]))).length > dataRows.length * 0.5) { valCol = c; break; }
+    }
+    if (valCol < 0) return { error: 'No se encontró la columna de valores.' };
+    for (const x of dataRows) {
+      const name = typeof x.r[countryCol] === 'string' ? x.r[countryCol].trim() : '';
+      const v = cellNum(x.r[valCol]), idx = idxOf(x.d);
+      if (name && isFinite(v) && idx !== null) add(name, idx, v);
+    }
+  } else {
+    for (let c = 0; c < ncol; c++) {
+      if (c === dateCol) continue;
+      let name = headName(c);
+      const nums = dataRows.filter(x => isFinite(cellNum(x.r[c]))).length;
+      if (!nums) continue;
+      if (!name) name = `Columna ${c + 1}`;
+      for (const x of dataRows) {
+        const v = cellNum(x.r[c]), idx = idxOf(x.d);
+        if (isFinite(v) && idx !== null) add(name, idx, v);
+      }
+    }
+  }
+  const series = [];
+  for (const [name, s] of map) {
+    const pts = [...s.entries()].sort((a, b) => a[0] - b[0]);
+    series.push({ name, pts });
+  }
+  if (!series.length) return { error: 'No se encontraron columnas con valores.' };
+  return { freq, series, layout: countryCol >= 0 ? 'largo' : 'ancho' };
+}
+
+// Convierte puntos [idx, val] en serie continua: se usa el último tramo sin vacíos
+function toSeries(pts, lab) {
+  const notes = [];
+  const dup = pts.filter(p => !isFinite(p[1]));
+  if (dup.length) return { error: `${lab(dup[0][0])} aparece dos veces.` };
+  if (!pts.length) return { error: 'Sin datos.' };
+  let i = pts.length - 1;
+  while (i > 0 && pts[i - 1][0] === pts[i][0] - 1) i--;
+  if (i > 0) notes.push(`se usa desde ${lab(pts[i][0])} (hay un vacío antes)`);
+  const seg = pts.slice(i);
+  if (seg.some(p => p[1] <= 0)) return { error: 'tiene valores negativos o cero; deben ser niveles, no tasas.' };
+  return { start: seg[0][0], v: seg.map(p => p[1]), notes };
+}
+
+// Arma el conjunto de países a partir de las hojas del libro. sheets: [{name, rows}]
+function buildDataset(sheets, fileName) {
+  const parsed = sheets.map(s => ({ name: s.name, res: parseSheet(s.rows) }));
+  const ok = parsed.filter(p => !p.res.error);
+  const pick = (freq, re) => {
+    const c = ok.filter(p => p.res.freq === freq);
+    return c.find(p => re.test(norm(p.name))) || c[0] || null;
+  };
+  const qs = pick('q', /trim|quarter|pib|gdp|^q$|^t$/);
+  const ms = pick('m', /mens|month|activ|imacec|^m$/);
+  if (!qs) {
+    const why = parsed.map(p => `${p.name}: ${p.res.error || (p.res.freq === 'm' ? 'mensual' : 'trimestral')}`).join(' · ');
+    return { error: `No se encontró una hoja trimestral con el PIB. ${why}` };
+  }
+  const countries = new Map();
+  const get = name => { const k = norm(name); if (!countries.has(k)) countries.set(k, { key: k, name, gdp: null, act: null, notes: [] }); return countries.get(k); };
+  for (const s of qs.res.series) {
+    const c = get(s.name), r = toSeries(s.pts, qLabel);
+    if (r.error) c.notes.push(`PIB: ${r.error}`); else { c.gdp = { start: r.start, v: r.v }; r.notes.forEach(n => c.notes.push(`PIB: ${n}`)); }
+  }
+  if (ms) for (const s of ms.res.series) {
+    const c = get(s.name), r = toSeries(s.pts, mLabel);
+    if (r.error) c.notes.push(`Actividad: ${r.error}`); else { c.act = { start: r.start, v: r.v }; r.notes.forEach(n => c.notes.push(`Actividad: ${n}`)); }
+  }
+  const list = [...countries.values()];
+  // Orden: el del archivo trimestral, luego los que solo están en la hoja mensual
+  return {
+    fileName, qSheet: qs.name, mSheet: ms ? ms.name : null, layout: qs.res.layout,
+    countries: list,
+    ignored: parsed.filter(p => p !== qs && p !== ms).map(p => p.name),
+  };
+}
+
+/* ---------- Cálculo ---------- */
+function fill(n, v) { return Array.from({ length: n }, () => v); }
+function solveRate(f, target, lo, hi) {
+  const flo = f(lo), fhi = f(hi);
+  if (!(target >= flo && target <= fhi)) return null;
+  for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; if (f(mid) < target) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+const sumY = (L, P, y) => { let s = 0; for (let j = 0; j < P; j++) s += L[y * P + j]; return s; };
+const growthY = (L, P, y) => (sumY(L, P, y) / sumY(L, P, y - 1) - 1) * 100;
+
+// Año en curso: el siguiente al último año completo del PIB
+function currentYear(gdp) { return Math.floor((gdp.start + gdp.v.length) / 4); }
+
+// Bloque genérico. P = 4 (PIB trimestral) o 12 (actividad mensual)
+function makeBlock(series, P, T) {
+  const endData = series.start + series.v.length - 1;
+  const last = Math.min(endData, T * P + P - 1);
+  if (series.start > (T - 1) * P) return { error: `debe comenzar a más tardar en ${P === 4 ? qLabel((T - 1) * 4) : mLabel((T - 1) * 12)}` };
+  if (last < (T - 1) * P - 1) return { error: `termina antes de ${T - 1}` };
+  const obs = {};
+  series.v.forEach((v, i) => { const k = series.start + i; if (k <= last) obs[k] = v; });
+  const rem = []; for (let k = last + 1; k <= T * P + P - 1; k++) rem.push(k);
+  const next = []; for (let k = (T + 1) * P; k <= (T + 1) * P + P - 1; k++) next.push(k);
+  return { P, T, start: series.start, last, obs, rem, next, truncated: endData > last };
+}
+function blockPath(b, ratesRem, ratesNext) {
+  const L = Object.assign({}, b.obs);
+  let lvl = b.obs[b.last];
+  b.rem.forEach((k, i) => { lvl *= 1 + ratesRem[i] / 100; L[k] = lvl; });
+  b.next.forEach((k, i) => { lvl *= 1 + ratesNext[i] / 100; L[k] = lvl; });
+  return L;
+}
+// bs: {pathT, pathT1, manualT, manualT1}
+function solveBlock(b, bs, projT, projT1) {
+  const P = b.P, T = b.T, nR = b.rem.length, lim = P === 4 ? 40 : 25;
+  const z1 = fill(P, 0);
+  const man = (a, n) => (Array.isArray(a) && a.length === n && a.every(isFinite)) ? a.slice() : null;
+  const carryT = growthY(blockPath(b, fill(nR, 0), z1), P, T);
+  const reqT = nR ? solveRate(r => growthY(blockPath(b, fill(nR, r), z1), P, T), projT, -lim, lim) : null;
+  const manT = man(bs.manualT, nR), manT1 = man(bs.manualT1, P);
+  let ratesT, okT = true, modeT = 'impl';
+  if (!nR) { ratesT = []; modeT = 'none'; }
+  else if (bs.pathT === 'manual' && manT) { ratesT = manT; modeT = 'manual'; }
+  else if (reqT === null) { ratesT = fill(nR, 0); okT = false; }
+  else ratesT = fill(nR, reqT);
+  const L0 = blockPath(b, ratesT, z1);
+  const growthT = growthY(L0, P, T);
+  const carryT1 = growthY(L0, P, T + 1);
+  const reqT1 = solveRate(r => growthY(blockPath(b, ratesT, fill(P, r)), P, T + 1), projT1, -lim, lim);
+  let ratesT1, okT1 = true, modeT1 = 'impl';
+  if (bs.pathT1 === 'manual' && manT1) { ratesT1 = manT1; modeT1 = 'manual'; }
+  else if (reqT1 === null) { ratesT1 = fill(P, 0); okT1 = false; }
+  else ratesT1 = fill(P, reqT1);
+  const L = blockPath(b, ratesT, ratesT1);
+  const growthT1 = growthY(L, P, T + 1);
+  const endT = (L[T * P + P - 1] / L[(T - 1) * P + P - 1] - 1) * 100;
+  const endT1 = (L[(T + 1) * P + P - 1] / L[T * P + P - 1] - 1) * 100;
+  return { b, L, carryT, reqT, ratesT, okT, modeT, growthT, carryT1, reqT1, ratesT1, okT1, modeT1, growthT1, endT, endT1 };
+}
+
+// Contexto de un país: PIB obligatorio, actividad opcional
+function buildCountry(c) {
+  if (!c.gdp) return { error: 'No tiene PIB trimestral.' };
+  const T = currentYear(c.gdp);
+  const g = makeBlock(c.gdp, 4, T);
+  if (g.error) return { error: `El PIB ${g.error}.` };
+  let a = null, actNote = null;
+  if (c.act) {
+    const r = makeBlock(c.act, 12, T);
+    if (r.error) actNote = `La actividad ${r.error}; no se usa.`;
+    else { a = r; if (r.truncated) actNote = `Se usan los meses de actividad hasta dic ${T}.`; }
+  }
+  return { T, g, a, actNote };
+}
+
+// Tasa constante de tendencia (promedio de las últimas cuatro t/t) para valores iniciales
+function trendDefaults(cc) {
+  const g = cc.g, P = 4, L = g.obs, k = g.last;
+  let s = 0, n = 0;
+  for (let i = 0; i < 4; i++) if (L[k - i - 1]) { s += (L[k - i] / L[k - i - 1] - 1) * 100; n++; }
+  const r = n ? s / n : 0;
+  const path = blockPath(g, fill(g.rem.length, r), fill(P, r));
+  const round = v => Math.round(v * 10) / 10;
+  return { projT: round(growthY(path, P, g.T)), projT1: round(growthY(path, P, g.T + 1)) };
+}
+
+function computeAll(cc, st) {
+  const gdp = solveBlock(cc.g, st.gdp, st.projT, st.projT1);
+  const act = cc.a ? solveBlock(cc.a, st.act, st.projT, st.projT1) : null;
+  return { T: cc.T, gdp, act };
+}
+
+if (typeof module !== 'undefined') module.exports = { parseNum, parseMonth, parseQuarterStr, parseDateCell, parseSheet, toSeries, buildDataset, makeBlock, blockPath, solveBlock, buildCountry, computeAll, trendDefaults, growthY, sumY, qLabel, mLabel, fill, solveRate };
+
+
+const EXAMPLE = {"fileName":null,"countries":[{"name":"País A","gdp":{"start":8072,"v":[47500,47975,48262.8,48504.2,48649.7,48990.2,49235.2,47758.1,47949.2,41476,43757.2,46732.7,48368.3,48948.8,51200.4,51610,51403.6,51146.5,50788.5,50585.4,50939.5,50735.7,50938.6,51091.5,51908.9,51753.2,52063.7,52272,52690.1,52795.5,53112.3,53271.6,53484.7,53752.1]},"act":{"start":24216,"v":[100.81,99.77,99.42,100.15,101.03,102.06,102.11,101.41,101.53,101.74,101.73,102.29,102.25,102.09,102.08,102.73,102.84,103.01,103.33,103.2,103.93,102.28,100.13,98.27,99.51,100.74,101.78,93.41,85.79,78.59,84.62,91.03,97,97.44,98.01,97.93,99.86,101.79,103.59,103.86,102.94,102.41,105.37,108.64,110.6,109.84,109.81,109.17,109.32,108.64,109.22,108.96,108.79,107.56,107.76,107.75,107.58,107.5,106.98,107.1,107.53,107.8,108.18,107.85,107.29,107.05,107.4,107.64,108.01,107.69,107.82,108.15,108.84,109.66,110.03,109.72,109.08,108.82,109.08,109.92,110.44,110.71,110.91,110.34,110.94,111.52,111.58,111.46,111.85,111.58,112.45,111.84,112.07,111.67,113.17,112.65,112.86,113.4,113.46,113.47,113.6,114.07,114.36,114.41]}},{"name":"País B","gdp":{"start":8072,"v":[182000,183456,184740.2,185848.6,186777.9,187898.5,188650.1,184499.8,182654.8,151603.5,165247.8,172684,177001.1,180541.1,183068.7,185265.5,186932.9,188054.5,188618.7,188807.3,189184.9,190130.8,191271.6,192610.5,194344,195898.7,197074.1,198453.7,199445.9,201240.9,202649.6,203865.5,204681,205295]},"act":{"start":24216,"v":[98.77,101,100.23,100.64,100.82,100.63,101.55,101.45,101.58,101.9,102.46,102.25,102.45,102.05,102.77,102.97,103.01,103.48,103.41,103.45,103.93,103.1,100.56,99.82,99.62,100.04,100.14,90.86,81.27,72.7,80.18,88.7,99.23,96.71,93.84,91.46,93.92,96.37,99.17,99.07,98.83,98.62,99.71,100.31,101.04,102.57,100.34,101.83,102.16,102.66,102.43,102.73,103.23,103.21,103.05,103.39,103.07,102.91,103.11,102.94,102.91,103.1,103.75,103.28,103.77,104.02,103.83,104.76,104.82,104.61,105.89,105.28,105.58,106.08,106.4,106.66,106.8,107.6,107.15,107.6,108.28,108.39,108.72,108.73,108.79,108.53,110.05,109.89,110.15,110.66,110.93,111.5,110.45,110.44,112.42,112.15,111.57,112.24,112.16,112.93,112.28,112.89,113]}},{"name":"País C","gdp":{"start":8072,"v":[33100,33298.6,33465.1,33699.3,33800.4,33868,34003.5,33493.5,32656.1,29553.8,31622.6,32571.2,33287.8,33654,33822.2,34160.5,34262.9,34194.4,34194.4,34331.2,34537.2,34778.9,34952.8,35232.5,35338.2,35479.5,35798.8,35977.8,36193.7,36338.5,36411.1,36593.2,36849.4]},"act":{"start":24216,"v":[101.31,98.62,100.08,99.71,100.66,100.81,101.18,100.69,101.26,101.31,102.07,101.63,102.73,101.61,101.5,101.64,102.06,102.54,102.95,102.57,101.75,101.08,101.04,100.52,98.88,98.81,96.67,92.73,87.56,84.13,89.75,94.65,99.91,98.46,98.16,96.84,98.42,99.52,102.05,102.15,101.48,100.29,100.86,101.55,103.18,103.34,102.6,103.54,103.09,104.01,102.9,102.73,102.78,104.03,102.99,103.78,102.5,103.11,103.13,104.68,104.7,103.9,103.63,104.4,104.32,105.83,106.62,104.55,104.72,105.26,106.27,106.65,106.83,106.06,106.15,106.73,107.47,107.22,107.02,108.77,109.08,109.14,107.83,109.6,109.46,109.04,109.74,109.9,109.77,109.78,110.4,109.55,110.64,110.38,111.74,110.15,110.32,111.25,112.65]}}]};
+const LS_KEY = 'arrastre-pib-v2';
+// Versión instalable (repositorio): los datos vienen de datos.xlsx publicado junto a la página
+const STANDALONE = true;
+let repoState = 'idle', repoError = '';
+
+const $ = s => document.querySelector(s);
+function fmt(v, d = 2) {
+  if (v === null || v === undefined || !isFinite(v)) return '–';
+  if (Math.abs(v) < 0.5 * 10 ** -d) v = 0;
+  return v.toFixed(d).replace('-', '−');
+}
+const pct = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? '–' : fmt(v, d) + '%';
+const sgn = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? '–' : (v >= 0.5 * 10 ** -d ? '+' : '') + fmt(v, d);
+const ann = (r, k) => (Math.pow(1 + r / 100, k) - 1) * 100;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const qS = qi => `T${qi % 4 + 1}`;
+const mS = mi => MESES[mi % 12];
+const perLab = (P, k) => P === 4 ? qLabel(k) : mLabel(k);
+const perShort = (P, k) => P === 4 ? qS(k) : mS(k);
+function pRange(P, a, b) {
+  if (P === 4) return a === b ? qS(a) : (Math.floor(a / 4) === Math.floor(b / 4) ? `${qS(a)}–${qS(b)}` : `${qLabel(a)}–${qLabel(b)}`);
+  if (a === b) return mS(a);
+  return Math.floor(a / 12) === Math.floor(b / 12) ? `${mS(a)}–${mS(b)}` : `${mLabel(a)}–${mLabel(b)}`;
+}
+const endLab = (P, T) => P === 4 ? `el 4T de ${T}` : `dic ${T}`;
+
+let dataset = null, source = 'none', curKey = null, cc = null, res = null, S = null, tab = 'res';
+let stMap = {};
+const IMPL = () => ({ pathT: 'impl', pathT1: 'impl' });
+const TABS = ['res', 'gdp', 'act', 'tbl', 'dat', 'met'];
+const mq = window.matchMedia('(max-width: 979px)');
+const isMobile = () => mq.matches;
+// Almacenamiento del artefacto: datos compartidos (solo editores escriben) y estado privado por persona
+const cloud = { db: null, uid: null, canEdit: true, status: 'connecting', exists: null, data: null, sig: null };
+
+/* ---------- Persistencia local (caché para la primera vista) ---------- */
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ ver: 4, dataset: (source === 'cloud' || source === 'local' || source === 'repo') ? dataset : null, src: source, curKey, stMap, tab })); } catch (e) {}
+  }, 400);
+  scheduleRemoteState();
+}
+const validDataset = d => d && Array.isArray(d.countries) && d.countries.length && d.countries.every(c => c && typeof c.name === 'string');
+function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (!s) return;
+    if (validDataset(s.dataset)) { dataset = s.dataset; source = (s.src === 'cloud' || s.src === 'repo') ? s.src : 'local'; }
+    if (s.stMap && typeof s.stMap === 'object') {
+      stMap = s.stMap;
+      if (!(s.ver >= 3)) Object.values(stMap).forEach(x => { if (x && typeof x === 'object') { x.gdp = IMPL(); x.act = IMPL(); } });
+    }
+    if (typeof s.curKey === 'string') curKey = s.curKey;
+    if (TABS.includes(s.tab)) tab = s.tab;
+  } catch (e) {}
+}
+
+/* ---------- Nube ---------- */
+let remoteJSON = null, remoteTimer = null, remoteChain = Promise.resolve();
+function scheduleRemoteState() {
+  if (!cloud.db || !cloud.uid) return;
+  clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(() => {
+    const body = { ver: 4, curKey, stMap };
+    const json = JSON.stringify(body);
+    if (json === remoteJSON) return;
+    remoteChain = remoteChain
+      .then(() => cloud.db.doc(`data/users/${cloud.uid}/state`).set(JSON.parse(json)))
+      .then(() => { remoteJSON = json; })
+      .catch(() => {});
+  }, 1500);
+}
+const datasetSig = d => `${d.uploadedAt || ''}|${d.fileName || ''}|${(d.countries || []).length}`;
+async function loadRepoData() {
+  repoState = 'loading'; cloud.status = 'off'; renderSource();
+  let found = false;
+  for (const name of ['datos.xlsx', 'datos.xls', 'datos.ods']) {
+    let r = null;
+    try { r = await fetch(name, { cache: 'no-cache' }); } catch (e) {}
+    if (!r || !r.ok) continue;
+    try {
+      const X = await loadXLSX();
+      const wb = X.read(await r.arrayBuffer(), { type: 'array', cellDates: true });
+      const sheets = wb.SheetNames.map(n => ({ name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null, blankrows: false }) }));
+      const parsed = buildDataset(sheets, name);
+      if (parsed.error) { repoState = 'error'; repoError = parsed.error; break; }
+      const ds = trimDataset(parsed);
+      const lm = r.headers.get('Last-Modified');
+      if (lm && !isNaN(new Date(lm))) ds.uploadedAt = new Date(lm).toISOString();
+      cloud.exists = true; cloud.data = ds; found = true; repoState = 'ok';
+      const localNewer = source === 'local' && dataset && dataset.uploadedAt && new Date(dataset.uploadedAt) > new Date(ds.uploadedAt);
+      if (source === 'example' || localNewer) renderSource();
+      else if (!(source === 'repo' && dataset && datasetSig(dataset) === datasetSig(ds))) setDataset(ds, 'repo');
+      break;
+    } catch (e) { repoState = 'error'; repoError = 'no se pudo leer el archivo'; break; }
+  }
+  if (!found) {
+    if (repoState !== 'error') repoState = 'missing';
+    cloud.exists = false; cloud.data = null;
+    if (source === 'repo') source = 'local';
+    if (!dataset) showEmpty('empty');
+  }
+  renderSource();
+}
+async function connectCloud() {
+  if (STANDALONE) return loadRepoData();
+  let db = null, user = null;
+  try {
+    if (window.claude && typeof window.claude.use === 'function') [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+  } catch (e) {}
+  if (!db) { cloud.status = 'off'; if (!dataset) showEmpty('empty'); renderSource(); return; }
+  cloud.db = db;
+  if (user) {
+    try { cloud.uid = await user.id(); } catch (e) {}
+    try { cloud.canEdit = await user.canEdit(); } catch (e) {}
+  }
+  // Estado personal (proyecciones y tasas por país) guardado desde otro dispositivo
+  if (cloud.uid) {
+    try {
+      const snap = await db.doc(`data/users/${cloud.uid}/state`).get();
+      if (snap.exists) {
+        const d = JSON.parse(JSON.stringify(snap.data()));
+        remoteJSON = JSON.stringify(d);
+        if (d.stMap && typeof d.stMap === 'object') stMap = Object.assign({}, stMap, d.stMap);
+        if (typeof d.curKey === 'string') curKey = d.curKey;
+        if (dataset) selectCountry(curKey);
+      }
+    } catch (e) {}
+  }
+  cloud.status = 'on';
+  db.doc('shared/dataset').onSnapshot(snap => {
+    if (snap.exists) {
+      const d = JSON.parse(JSON.stringify(snap.data()));
+      cloud.exists = true; cloud.data = d;
+      const sig = datasetSig(d);
+      if (source === 'example') { cloud.sig = sig; renderSource(); return; }
+      if (source === 'cloud' && sig === cloud.sig && dataset) { renderSource(); return; }
+      cloud.sig = sig;
+      if (validDataset(d)) setDataset(d, 'cloud'); else renderSource();
+    } else {
+      cloud.exists = false; cloud.data = null;
+      if (source === 'cloud') source = 'local';
+      if (!dataset) showEmpty('empty');
+      renderSource();
+    }
+  }, () => { cloud.status = 'error'; renderSource(); });
+  renderSource();
+}
+// Recorta cada serie a los últimos 10 años: suficiente para todos los cálculos y gráficos
+function trimDataset(ds, nq = 40, nm = 120) {
+  const cut = (x, n) => (x && x.v && x.v.length > n) ? { start: x.start + x.v.length - n, v: x.v.slice(-n) } : (x || null);
+  return {
+    fileName: ds.fileName || 'Excel', uploadedAt: new Date().toISOString(), qSheet: ds.qSheet || null, mSheet: ds.mSheet || null, layout: ds.layout || null,
+    countries: ds.countries.map(c => ({ key: keyOf(c), name: c.name, gdp: cut(c.gdp, nq), act: cut(c.act, nm), notes: c.notes || [] })),
+  };
+}
+async function pushDataset(ds) {
+  if (STANDALONE) return { ok: false, why: 'standalone' };
+  if (!cloud.db) return { ok: false, why: 'off' };
+  if (!cloud.canEdit) return { ok: false, why: 'ro' };
+  let body = ds;
+  if (JSON.stringify(body).length > 240000) body = trimDataset(ds, 24, 72);
+  if (JSON.stringify(body).length > 240000) return { ok: false, why: 'big' };
+  try {
+    await cloud.db.doc('shared/dataset').set(body);
+    cloud.exists = true; cloud.data = body; cloud.sig = datasetSig(body);
+    return { ok: true };
+  } catch (e) { return { ok: false, why: (e && e.code) || 'error' }; }
+}
+function pushMsg(r) {
+  if (r.ok) return ['ok', 'Guardado en el artefacto: disponible en tus otros dispositivos.'];
+  if (r.why === 'standalone') return ['ok', 'Quedó guardado en este dispositivo. Para verlo en todos, súbelo al repositorio con el nombre datos.xlsx.'];
+  if (r.why === 'off') return ['err', 'En esta vista no hay acceso al almacenamiento del artefacto: los datos quedan solo en este navegador.'];
+  if (r.why === 'ro') return ['err', 'Tienes acceso de solo lectura: los datos quedan solo en este navegador.'];
+  if (r.why === 'big') return ['err', 'El archivo es demasiado grande para guardarlo en el artefacto: queda solo en este navegador.'];
+  if (r.why === 'quota_exceeded') return ['err', 'El almacenamiento del artefacto está lleno: los datos quedan solo en este navegador.'];
+  return ['err', 'No se pudo guardar en el artefacto. Los datos quedan en este navegador; intenta «Guardar en la nube» más tarde.'];
+}
+async function saveLocalToCloud(btnMsg) {
+  if (!dataset || source !== 'local') return;
+  const r = await pushDataset(dataset);
+  if (r.ok) { source = 'cloud'; save(); }
+  const [k, t] = pushMsg(r); btnMsg(k, t); renderSource();
+}
+function fmtStamp(iso) {
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+// Texto de estado del origen de los datos, compartido por escritorio y móvil
+function sourceInfo() {
+  const name = dataset ? (dataset.fileName || 'Excel') : '';
+  if (STANDALONE) {
+    const st = dataset && dataset.uploadedAt ? ` · actualizado ${fmtStamp(dataset.uploadedAt)}` : '';
+    const rerr = repoState === 'error' ? ` No se pudo leer datos.xlsx del repositorio: ${repoError}.` : '';
+    if (source === 'example') return { cls: 'warn', short: 'Datos de ejemplo sintéticos', long: (cloud.exists ? 'Estás viendo datos de ejemplo. Los datos del repositorio siguen disponibles.' : 'Estás viendo datos de ejemplo sintéticos.') + rerr };
+    if (source === 'repo') return { cls: 'ok', short: `${name} · repositorio`, long: `Archivo ${name} del repositorio${st}. Para actualizarlos en todos tus dispositivos, reemplaza ese archivo en GitHub.` };
+    if (source === 'local') return { cls: 'warn', short: `${name} · este dispositivo`, long: `Archivo cargado en este dispositivo${st}. Para verlo en todos tus dispositivos, súbelo al repositorio con el nombre datos.xlsx.` + rerr };
+    if (repoState === 'loading' || repoState === 'idle') return { cls: '', short: 'Buscando datos…', long: 'Buscando datos.xlsx en el repositorio…' };
+    return { cls: '', short: 'Sin datos', long: (repoState === 'error' ? rerr.trim() : 'No se encontró datos.xlsx en el repositorio.') };
+  }
+  if (source === 'example') return { cls: 'warn', short: 'Datos de ejemplo sintéticos', long: cloud.exists ? 'Estás viendo datos de ejemplo. Tus datos siguen guardados.' : 'Estás viendo datos de ejemplo sintéticos.' };
+  if (source === 'cloud') {
+    const st = dataset && dataset.uploadedAt ? ` · actualizado ${fmtStamp(dataset.uploadedAt)}` : '';
+    if (cloud.status === 'on') return { cls: 'ok', short: `${name} · sincronizado`, long: `Guardado en el artefacto: disponible en tus dispositivos${st}.` };
+    return { cls: 'ok', short: `${name}`, long: `Última copia guardada en el artefacto${st}. Conectando…` };
+  }
+  if (source === 'local') {
+    if (cloud.status === 'connecting') return { cls: 'warn', short: `${name}`, long: 'Conectando con el almacenamiento del artefacto…' };
+    if (cloud.db && cloud.canEdit) return { cls: 'warn', short: `${name} · solo en este navegador`, long: 'Estos datos están solo en este navegador. Guárdalos para verlos en tus otros dispositivos.', canSave: true };
+    if (cloud.db) return { cls: 'warn', short: `${name} · solo en este navegador`, long: 'Estos datos están solo en este navegador; tienes acceso de solo lectura al artefacto.' };
+    return { cls: 'warn', short: `${name} · solo en este navegador`, long: 'En esta vista no hay acceso al almacenamiento del artefacto; ábrelo desde Claude para sincronizar.' };
+  }
+  if (cloud.status === 'connecting') return { cls: '', short: 'Conectando…', long: 'Buscando los datos guardados del artefacto…' };
+  return { cls: '', short: 'Sin datos', long: cloud.db ? 'Aún no hay datos guardados en el artefacto.' : 'En esta vista no hay acceso al almacenamiento del artefacto.' };
+}
+function renderSource() {
+  const i = sourceInfo();
+  const chip = $('#src-chip');
+  chip.className = 'chip' + (source === 'example' ? ' example' : source === 'cloud' ? ' cloud' : source === 'local' ? ' local' : '');
+  chip.textContent = i.short; chip.title = i.long;
+  $('#btn-save-cloud').hidden = !i.canSave;
+  $('#btn-upload').hidden = !cloud.canEdit && !!cloud.db;
+  $('#sync-line').className = 'sync ' + i.cls; $('#sync-text').textContent = i.long;
+  $('#btn-mine').hidden = !((source === 'example' || (STANDALONE && source === 'local')) && cloud.exists);
+  $('#btn-pick').hidden = !cloud.canEdit && !!cloud.db;
+  $('#data-aside').textContent = dataset ? (source === 'example' ? 'Ejemplo' : (dataset.fileName || 'Excel')) : '';
+  renderMobileSource(i);
+}
+
+/* ---------- Estado vacío ---------- */
+function showEmpty(kind) {
+  const canUp = !cloud.db || cloud.canEdit;
+  const t = kind === 'loading' ? 'Buscando tus datos…' : 'Aún no hay datos';
+  const p = kind === 'loading' ? (STANDALONE ? 'Buscando datos.xlsx en el repositorio.' : 'Se están leyendo los datos guardados de este artefacto.')
+    : STANDALONE ? 'Sube tu Excel al repositorio con el nombre datos.xlsx para verlo en todos tus dispositivos, o cárgalo solo en este.'
+    : canUp ? 'Carga el Excel con el PIB trimestral (y, si quieres, la actividad mensual) de cada país. Quedará guardado y disponible en tus otros dispositivos.'
+    : 'Quien edita este artefacto todavía no ha cargado datos.';
+  $('#empty-t').textContent = t; $('#empty-p').textContent = p;
+  $('#empty-btns').hidden = kind === 'loading';
+  $('#empty-upload').hidden = !canUp;
+  $('.strip').hidden = true; $('.tabrow').hidden = true;
+  TABS.forEach(x => { $('#v-' + x).hidden = true; });
+  $('#v-empty').hidden = false;
+  $('#cbtns').innerHTML = ''; $('#cmeta').innerHTML = '';
+  cc = null; res = null;
+  // Móvil
+  $('#m-empty-t').textContent = t; $('#m-empty-p').textContent = p;
+  $('#m-empty-up').hidden = kind === 'loading' || !canUp; $('#m-empty-ex').hidden = kind === 'loading';
+  $('#m-empty').hidden = false; ['#m-T', '#m-T1', '#m-ch', '#m-foot'].forEach(x => { $(x).hidden = true; });
+  $('#m-chips').innerHTML = '';
+  renderSource();
+}
+function hideEmpty() {
+  $('#v-empty').hidden = true; $('.strip').hidden = false; $('.tabrow').hidden = false;
+  $('#m-empty').hidden = true; ['#m-T', '#m-T1', '#m-ch', '#m-foot'].forEach(x => { $(x).hidden = false; });
+}
+function setDataset(ds, src) {
+  dataset = ds; source = src; ccCache.clear();
+  hideEmpty();
+  renderCountries();
+  if (!dataset.countries.some(c => keyOf(c) === curKey && !countryCtx(c).error)) curKey = firstValidKey();
+  if (curKey) selectCountry(curKey); else { showNoCountry(); setTab('dat'); }
+  renderSource();
+  save();
+}
+function useExample() { setDataset(EXAMPLE, 'example'); }
+function useMine() { if (cloud.data && validDataset(cloud.data)) setDataset(cloud.data, STANDALONE ? 'repo' : 'cloud'); }
+
+/* ---------- Pestañas ---------- */
+function setTab(t) {
+  tab = t;
+  TABS.forEach(x => {
+    const on = x === t;
+    $('#t-' + x).setAttribute('aria-selected', String(on));
+    $('#t-' + x).tabIndex = on ? 0 : -1;
+    $('#v-' + x).hidden = !on;
+  });
+  requestAnimationFrame(drawAll);
+  save();
+}
+function bindTabs() {
+  TABS.forEach((x, i) => {
+    const b = $('#t-' + x);
+    b.addEventListener('click', () => setTab(x));
+    b.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;
+      setTab(TABS[j]); $('#t-' + TABS[j]).focus();
+    });
+  });
+}
+
+/* ---------- Países ---------- */
+const keyOf = c => c.key || norm(c.name);
+const ccCache = new Map();
+function countryCtx(c) {
+  if (!ccCache.has(c)) { let k; try { k = buildCountry(c); } catch (e) { k = { error: 'Datos no válidos.' }; } ccCache.set(c, k); }
+  return ccCache.get(c);
+}
+function renderCountries() {
+  if (!dataset) return;
+  const box = $('#cbtns');
+  box.innerHTML = dataset.countries.map((c, i) => {
+    const k = countryCtx(c), dis = !!k.error;
+    return `<input type="radio" name="country" id="c-${i}" value="${esc(keyOf(c))}"${dis ? ' disabled' : ''}><label for="c-${i}"${dis ? ` title="${esc(k.error)}"` : ''}>${esc(c.name)}</label>`;
+  }).join('');
+  box.querySelectorAll('input').forEach(el => el.addEventListener('change', () => { if (el.checked) selectCountry(el.value); }));
+  const rows = dataset.countries.map(c => {
+    const k = countryCtx(c);
+    const g = c.gdp ? qLabel(c.gdp.start + c.gdp.v.length - 1) : '–';
+    const a = c.act ? mLabel(c.act.start + c.act.v.length - 1) : '–';
+    const notes = (c.notes || []).concat(k.error ? [k.error] : (k.actNote ? [k.actNote] : []));
+    return `<tr><td>${esc(c.name)}</td><td class="m">${g}</td><td class="m">${a}</td><td class="w">${esc(notes.join(' · '))}</td></tr>`;
+  }).join('');
+  $('#ctab').innerHTML = `<thead><tr><th>País</th><th>PIB hasta</th><th>Actividad hasta</th><th>Observaciones</th></tr></thead><tbody>${rows}</tbody>`;
+  renderMobileCountries();
+}
+function firstValidKey() {
+  if (!dataset) return null;
+  for (const c of dataset.countries) if (!countryCtx(c).error) return keyOf(c);
+  return null;
+}
+function selectCountry(key) {
+  if (!dataset) return;
+  let c = dataset.countries.find(x => keyOf(x) === key);
+  if (!c || countryCtx(c).error) { key = firstValidKey(); if (!key) return showNoCountry(); c = dataset.countries.find(x => keyOf(x) === key); }
+  curKey = key; cc = countryCtx(c);
+  const sig = `${cc.g.last}|${cc.a ? cc.a.last : 'x'}|${cc.T}`;
+  let s = stMap[key];
+  if (!s || typeof s !== 'object' || !isFinite(s.projT) || !isFinite(s.projT1) || s.sig !== sig) {
+    const keepProj = s && s.sig && isFinite(s.projT) && isFinite(s.projT1) && s.sig.split('|')[2] === sig.split('|')[2];
+    s = Object.assign({ sig }, keepProj ? { projT: s.projT, projT1: s.projT1 } : trendDefaults(cc), { gdp: IMPL(), act: IMPL() });
+  }
+  if (!s.gdp) s.gdp = IMPL(); if (!s.act) s.act = IMPL();
+  stMap[key] = S = s;
+  document.querySelectorAll('#cbtns input').forEach(el => { el.checked = el.value === key; });
+  syncMobileChips(true);
+  buildMobileCards();
+  $('#cmeta').innerHTML = `<span class="chip">PIB hasta <b>${qLabel(cc.g.last)}</b></span>`
+    + (cc.a ? `<span class="chip">Actividad hasta <b>${mLabel(cc.a.last)}</b></span>` : `<span class="chip">Sin actividad</span>`);
+  setupControls();
+  update();
+}
+function showNoCountry() {
+  cc = null; res = null;
+  ['#m-T1', '#m-ch'].forEach(x => { $(x).hidden = true; });
+  $('#m-T').hidden = false;
+  $('#m-T').innerHTML = '<p class="m-sub">Ningún país del archivo tiene un PIB trimestral utilizable. Toca el botón de datos para ver el detalle.</p>';
+  mBuiltFor = null;
+  $('#yc-T').innerHTML = '<p class="none">Ningún país del archivo tiene un PIB trimestral utilizable. Revisa el detalle en la pestaña Datos.</p>';
+  $('#yc-T1').innerHTML = '';
+}
+
+/* ---------- Controles ---------- */
+function setTrack(range) {
+  const lo = +range.min, hi = +range.max, v = +range.value;
+  const p = x => ((Math.min(hi, Math.max(lo, x)) - lo) / (hi - lo) * 100).toFixed(2) + '%';
+  const z = Math.min(hi, Math.max(lo, 0));
+  range.style.setProperty('--a', p(Math.min(z, v)));
+  range.style.setProperty('--b', p(Math.max(z, v)));
+}
+function fitRange(range, v, pad) {
+  if (v < +range.min) range.min = Math.floor(v - pad);
+  if (v > +range.max) range.max = Math.ceil(v + pad);
+}
+function syncPair(id, v) {
+  const r = $('#r-' + id), n = $('#n-' + id);
+  fitRange(r, v, 1);
+  r.value = v; setTrack(r);
+  if (document.activeElement !== n) n.value = fmt(v, 2);
+}
+function bindNum(input, set) {
+  input.addEventListener('input', () => { const v = parseNum(input.value); if (isFinite(v)) set(v); });
+  input.addEventListener('blur', () => update());
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+}
+function bindPair(id, set) {
+  const r = $('#r-' + id);
+  r.addEventListener('input', () => set(parseFloat(r.value)));
+  bindNum($('#n-' + id), set);
+}
+
+// Bloques de tasas: g = PIB, a = actividad; T = resto del año, N = año siguiente
+const BLOCKS = [
+  { id: 'gT', blk: 'gdp', w: 'T' }, { id: 'gN', blk: 'gdp', w: 'T1' },
+  { id: 'aT', blk: 'act', w: 'T' }, { id: 'aN', blk: 'act', w: 'T1' },
+];
+const blockOf = d => d.blk === 'gdp' ? cc.g : cc.a;
+const periodsOf = d => { const b = blockOf(d); return d.w === 'T' ? b.rem : b.next; };
+const keysOf = d => d.w === 'T' ? { path: 'pathT', man: 'manualT', rates: 'ratesT', mode: 'modeT' } : { path: 'pathT1', man: 'manualT1', rates: 'ratesT1', mode: 'modeT1' };
+const eqLim = {};
+let dragging = null;
+
+function eqHTML(d) {
+  const b = blockOf(d), P = b.P, ks = periodsOf(d);
+  if (!ks.length) return '';
+  const lim = P === 4 ? 4 : 2;
+  let h = '';
+  if (ks.length > 1) h += `<div class="all"><label for="r-${d.id}-all">Todos</label><input type="range" id="r-${d.id}-all" min="${-lim}" max="${lim}" step="0.01" aria-label="Misma tasa para todos los períodos"><input class="num" id="n-${d.id}-all" inputmode="decimal" autocomplete="off" aria-label="Misma tasa para todos"></div>`;
+  h += '<div class="eq">' + ks.map((k, i) => `<div class="eq-col"><input class="eq-num" id="n-${d.id}-${i}" inputmode="decimal" autocomplete="off" aria-label="Tasa ${perLab(P, k)}"><div class="eq-bar" id="b-${d.id}-${i}" role="slider" tabindex="0" aria-label="${perLab(P, k)}" aria-orientation="vertical"><i class="eq-zero"></i><i class="eq-fill"></i><i class="eq-knob"></i></div><span class="eq-lab">${perShort(P, k)}</span></div>`).join('') + '</div>';
+  return h;
+}
+function bindEq(d) {
+  const n = periodsOf(d).length, K = keysOf(d), bs = () => S[d.blk];
+  // Al tocar una tasa se pasa a modo manual partiendo de lo que se ve en pantalla
+  const ensure = () => {
+    if (bs()[K.path] !== 'manual' || !Array.isArray(bs()[K.man]) || bs()[K.man].length !== n) bs()[K.man] = res[d.blk][K.rates].slice();
+    bs()[K.path] = 'manual';
+  };
+  const r2 = v => Math.round(v * 100) / 100;
+  for (let i = 0; i < n; i++) {
+    const set = v => { ensure(); bs()[K.man][i] = v; update(); };
+    bindNum($(`#n-${d.id}-${i}`), set);
+    const bar = $(`#b-${d.id}-${i}`);
+    const fromY = e => {
+      const rc = bar.getBoundingClientRect(), lim = eqLim[d.id];
+      const f = Math.min(1, Math.max(0, (e.clientY - rc.top) / rc.height));
+      set(r2(lim - f * 2 * lim));
+    };
+    let y0 = null, moved = false;
+    bar.addEventListener('pointerdown', e => { e.preventDefault(); bar.focus(); bar.setPointerCapture(e.pointerId); y0 = e.clientY; moved = false; });
+    bar.addEventListener('pointermove', e => {
+      if (y0 === null || !(bar.hasPointerCapture && bar.hasPointerCapture(e.pointerId))) return;
+      if (!moved && Math.abs(e.clientY - y0) < 4) return;
+      moved = true; dragging = d.id; fromY(e);
+    });
+    const end = () => { y0 = null; if (dragging) { dragging = null; update(); } };
+    bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', end);
+    bar.addEventListener('keydown', e => {
+      const cur = res[d.blk][K.rates][i];
+      const step = { ArrowUp: 0.01, ArrowDown: -0.01, PageUp: 0.1, PageDown: -0.1 }[e.key];
+      if (step === undefined) return;
+      e.preventDefault(); set(r2(cur + step * (e.shiftKey ? 10 : 1)));
+    });
+  }
+  const ra = $(`#r-${d.id}-all`);
+  if (ra) {
+    const setAll = v => { ensure(); bs()[K.man] = bs()[K.man].map(() => v); update(); };
+    ra.addEventListener('input', () => setAll(parseFloat(ra.value)));
+    bindNum($(`#n-${d.id}-all`), setAll);
+  }
+}
+
+function setupControls() {
+  const T = cc.T;
+  $('#lab-T').textContent = T; $('#lab-T1').textContent = T + 1;
+  const base = computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() }));
+  const cT = Math.round(base.gdp.carryT), cT1 = Math.round(base.gdp.carryT1);
+  const rT = $('#r-projT'), rT1 = $('#r-projT1');
+  rT.min = Math.min(cT - 5, Math.floor(S.projT) - 1); rT.max = Math.max(cT + 5, Math.ceil(S.projT) + 1);
+  rT1.min = Math.min(cT1 - 5, Math.floor(S.projT1) - 1); rT1.max = Math.max(cT1 + 5, Math.ceil(S.projT1) + 1);
+  $('#h-gT').innerHTML = `Resto de ${T}<span>${pRange(4, cc.g.rem[0], cc.g.rem[cc.g.rem.length - 1])}</span>`;
+  $('#h-gN').innerHTML = `${T + 1}<span>desde el 4T de ${T}</span>`;
+  const hasA = !!cc.a;
+  $('#act-body').hidden = !hasA; $('#act-none').hidden = hasA;
+  $('#act-charts').hidden = !hasA;
+  $('#act-none').textContent = cc.actNote || 'Este país no tiene serie de actividad mensual.';
+  $('#t-act').disabled = !hasA;
+  if (!hasA && tab === 'act') tab = 'res';
+  if (hasA) {
+    $('#h-aT').innerHTML = `Resto de ${T}<span>${cc.a.rem.length ? pRange(12, cc.a.rem[0], cc.a.rem[cc.a.rem.length - 1]) : 'año completo'}</span>`;
+    $('#h-aN').innerHTML = `${T + 1}<span>desde dic ${T}</span>`;
+  }
+  BLOCKS.forEach(d => {
+    const box = $('#eq-' + d.id);
+    if (d.blk === 'act' && !hasA) { box.innerHTML = ''; return; }
+    box.innerHTML = eqHTML(d);
+    delete eqLim[d.id];
+    bindEq(d);
+  });
+  setTab(tab);
+}
+
+function bindStatic() {
+  bindTabs();
+  // Al cambiar una proyección, ese año vuelve a la dinámica requerida (PIB y actividad)
+  bindPair('projT', v => { S.projT = v; S.gdp.pathT = 'impl'; S.act.pathT = 'impl'; update(); });
+  bindPair('projT1', v => { S.projT1 = v; S.gdp.pathT1 = 'impl'; S.act.pathT1 = 'impl'; update(); });
+  // Botón «Usar requerida» del resumen
+  ['#yc-T', '#yc-T1'].forEach(sel => $(sel).addEventListener('click', e => {
+    const b = e.target.closest('[data-reset]'); if (!b) return;
+    const [blk, w] = b.dataset.reset.split(':');
+    S[blk][w === 'T' ? 'pathT' : 'pathT1'] = 'impl'; update();
+  }));
+  BLOCKS.forEach(d => {
+    const K = keysOf(d);
+    document.querySelectorAll(`input[name="m-${d.id}"]`).forEach(el => el.addEventListener('change', () => {
+      const bs = S[d.blk];
+      if (el.value === 'manual') {
+        const cur = res[d.blk][K.rates];
+        if (!Array.isArray(bs[K.man]) || bs[K.man].length !== cur.length) bs[K.man] = cur.slice();
+      }
+      bs[K.path] = el.value; update();
+    }));
+  });
+  const file = $('#file');
+  $('#btn-upload').addEventListener('click', () => file.click());
+  $('#btn-pick').addEventListener('click', () => file.click());
+  file.addEventListener('change', () => { if (file.files[0]) handleFile(file.files[0]); file.value = ''; });
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) handleFile(f); });
+  $('#btn-example').addEventListener('click', () => { useExample(); msg('ok', 'Se muestran los datos de ejemplo. Tus datos guardados no cambian.'); });
+  $('#btn-mine').addEventListener('click', () => { useMine(); msg('ok', 'Se muestran tus datos guardados.'); });
+  $('#btn-save-cloud').addEventListener('click', () => saveLocalToCloud((k, t) => { setTab('dat'); msg(k, t); }));
+  $('#empty-upload').addEventListener('click', () => file.click());
+  $('#empty-example').addEventListener('click', useExample);
+  $('#copy-g').addEventListener('click', e => copySeries(res && res.gdp, e.currentTarget));
+  $('#copy-a').addEventListener('click', e => copySeries(res && res.act, e.currentTarget));
+}
+function msg(kind, text) { const m = $('#msg-file'); m.className = 'dmsg ' + kind; m.textContent = text; }
+
+/* ---------- Lectura del Excel ---------- */
+let xlsxP = null;
+function loadScript(src) {
+  return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+}
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  const srcs = (STANDALONE ? ['vendor/xlsx.full.min.js'] : []).concat(['https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']);
+  if (!xlsxP) xlsxP = srcs.slice(1).reduce((pr, u) => pr.catch(() => loadScript(u)), loadScript(srcs[0]))
+    .then(() => { if (!window.XLSX) throw new Error('x'); return window.XLSX; })
+    .catch(() => { xlsxP = null; const e = new Error('No se pudo cargar el lector de Excel. Revisa la conexión e intenta de nuevo.'); e.user = true; throw e; });
+  return xlsxP;
+}
+async function handleFile(f) {
+  const out = isMobile() ? mMsg : (k, t) => { setTab('dat'); msg(k, t); };
+  if (!isMobile()) setTab('dat');
+  out('', `Leyendo ${f.name}…`);
+  try {
+    const X = await loadXLSX();
+    const buf = await f.arrayBuffer();
+    const wb = X.read(buf, { type: 'array', cellDates: true });
+    const sheets = wb.SheetNames.map(n => ({ name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null, blankrows: false }) }));
+    const parsed = buildDataset(sheets, f.name);
+    if (parsed.error) { out('err', parsed.error); return; }
+    const ds = trimDataset(parsed);
+    const usable = ds.countries.filter(c => !buildCountry(c).error);
+    if (!usable.length) { out('err', 'Ningún país tiene un PIB trimestral utilizable. Revisa que la hoja trimestral tenga fechas y niveles.'); return; }
+    if (!usable.some(c => keyOf(c) === curKey)) curKey = keyOf(usable[0]);
+    setDataset(ds, 'local');
+    out('', `Guardando ${f.name}…`);
+    const r = await pushDataset(ds);
+    if (r.ok) { source = 'cloud'; save(); renderSource(); }
+    const [k, t] = pushMsg(r);
+    out(k, `Hoja trimestral «${parsed.qSheet}»${parsed.mSheet ? ` y mensual «${parsed.mSheet}»` : ''}: ${usable.length} de ${ds.countries.length} países con PIB utilizable. ${t}`);
+  } catch (e) {
+    out('err', e && e.user ? e.message : 'No se pudo leer el archivo. Verifica que sea un Excel (.xlsx, .xls u .ods).');
+  }
+}
+
+/* ---------- Actualización ---------- */
+function update() {
+  if (!cc) return;
+  res = computeAll(cc, S);
+  syncPair('projT', S.projT);
+  syncPair('projT1', S.projT1);
+  syncBlocks();
+  renderResumen();
+  drawAll();
+  renderTables();
+  renderMobile();
+  save();
+}
+function gapText(g) {
+  if (Math.abs(g) < 0.005) return 'igual que';
+  return `<span class="${g > 0 ? 'gap-pos' : 'gap-neg'}">${fmt(Math.abs(g), 2)} pp ${g > 0 ? 'por encima de' : 'por debajo de'}</span>`;
+}
+function syncBlocks() {
+  const T = cc.T;
+  BLOCKS.forEach(d => {
+    const r = res[d.blk];
+    if (!r) return;
+    const K = keysOf(d), isT = d.w === 'T', mode = r[K.mode], rates = r[K.rates];
+    const P = r.b.P, ks = periodsOf(d), L = r.L;
+    $(`#m-${d.id}-impl`).checked = mode !== 'manual'; $(`#m-${d.id}-man`).checked = mode === 'manual';
+    $(`#m-${d.id}-impl`).disabled = mode === 'none'; $(`#m-${d.id}-man`).disabled = mode === 'none';
+    $('#blk-' + d.id).classList.toggle('is-impl', mode !== 'manual');
+    // Escala del ecualizador: fija mientras se arrastra
+    const base = P === 4 ? 2 : 1;
+    if (dragging !== d.id) {
+      const mx = Math.max(0, ...rates.map(Math.abs));
+      eqLim[d.id] = Math.max(base, Math.ceil(mx * 1.25 / (base / 2)) * (base / 2));
+    }
+    const lim = eqLim[d.id];
+    rates.forEach((v, i) => {
+      const bar = $(`#b-${d.id}-${i}`), t = $(`#n-${d.id}-${i}`);
+      if (!bar) return;
+      const f = Math.max(-1, Math.min(1, v / lim)) * 50;
+      const fill = bar.querySelector('.eq-fill'), knob = bar.querySelector('.eq-knob');
+      if (f >= 0) { fill.style.top = (50 - f) + '%'; fill.style.height = f + '%'; }
+      else { fill.style.top = '50%'; fill.style.height = (-f) + '%'; }
+      knob.style.top = (50 - f) + '%';
+      const k = ks[i], yy = L[k - P] ? (L[k] / L[k - P] - 1) * 100 : null;
+      bar.setAttribute('aria-valuenow', v.toFixed(2)); bar.setAttribute('aria-valuemin', -lim); bar.setAttribute('aria-valuemax', lim);
+      bar.title = `${perLab(P, k)} · ${P === 4 ? 't/t' : 'm/m'} ${pct(v)} · a/a ${pct(yy, 1)}`;
+      if (document.activeElement !== t) t.value = fmt(v, 2);
+    });
+    const ra = $(`#r-${d.id}-all`), ta = $(`#n-${d.id}-all`);
+    if (ra && rates.length) {
+      const same = rates.every(v => Math.abs(v - rates[0]) < 1e-9);
+      const mean = rates.reduce((s, v) => s + v, 0) / rates.length;
+      fitRange(ra, mean, 0.5); ra.value = mean; setTrack(ra);
+      if (document.activeElement !== ta) ta.value = same ? fmt(rates[0], 2) : '';
+      ta.placeholder = same ? '' : 'varias';
+    }
+    const el = $('#st-' + d.id), yr = isT ? T : T + 1, proj = isT ? S.projT : S.projT1;
+    const g = isT ? r.growthT : r.growthT1, ok = isT ? r.okT : r.okT1;
+    const from = isT ? `desde ${perLab(P, r.b.last)}` : `desde ${endLab(P, T)}`;
+    const what = d.blk === 'gdp' ? 'El PIB' : 'La actividad';
+    if (mode === 'none') el.innerHTML = `La actividad ya cubre todo ${T}: crece <b>${pct(g)}</b>.`;
+    else if (mode === 'manual') el.innerHTML = `Tasas manuales: ${d.blk === 'gdp' ? 'el PIB' : 'la actividad'} crece <b>${pct(g)}</b> en ${yr}, ${gapText(g - proj)} la proyección. «Requerida» o un cambio de proyección vuelven a la tasa constante.`;
+    else if (!ok) el.innerHTML = `<span class="warnline">Ninguna tasa constante razonable logra ${pct(proj)} en ${yr}.</span>`;
+    else el.innerHTML = `Tasa constante ${from} que logra ${pct(proj)} en ${yr}.`;
+  });
+}
+
+// Promedio reciente de la variación del período (4 trimestres o 6 meses)
+function recentAvg(b, n) {
+  let s = 0, c = 0;
+  for (let i = 0; i < n; i++) { const k = b.last - i; if (b.obs[k - 1]) { s += (b.obs[k] / b.obs[k - 1] - 1) * 100; c++; } }
+  return c ? s / c : null;
+}
+function cellCarry(v, note) { return `<div class="mx-c"><span class="val">${pct(v)}</span><span class="note">${note}</span></div>`; }
+function cellReq(v, unit, k, recent, note) {
+  if (v === null || v === undefined) return `<div class="mx-c req"><span class="val">–</span><span class="note${note ? '' : ' warnline'}">${note || 'Fuera de rango'}</span></div>`;
+  return `<div class="mx-c req"><span class="val">${pct(v)}<small>${unit}</small></span><span class="note">${pct(ann(v, k), 1)} anualizada${recent ? `<br>${recent}` : ''}</span></div>`;
+}
+function cellScen(g, proj, mode, endTxt, reset) {
+  if (mode === 'manual') return `<div class="mx-c man"><span class="val">${pct(g)}<small>manual</small></span><span class="note">Tasas manuales: ${gapText(g - proj)} la proyección</span><button class="linkbtn" type="button" data-reset="${reset}">Usar dinámica requerida</button></div>`;
+  const status = mode === 'none' ? 'Dato completo' : 'Cumple la proyección';
+  return `<div class="mx-c"><span class="val">${pct(g)}</span><span class="note">${status}<br>${endTxt}</span></div>`;
+}
+function wfGroup(title, rows, P) {
+  return `<div class="wf"><div class="wf-g">${title}</div>` + rows.map(r => {
+    const x0 = P(Math.min(r.a, r.b)), w = Math.abs(P(r.b) - P(r.a));
+    const val = r.kind === 'total' ? pct(r.b) : `${sgn(r.b - r.a)} pp`;
+    const tgt = (r.target !== null && r.target !== undefined) ? `<span class="wf-target" style="left:calc(${P(r.target).toFixed(2)}% - 1px)" title="Proyección ${pct(r.target)}"></span>` : '';
+    return `<div class="wf-row ${r.kind}"><span class="wf-lab">${esc(r.label)}</span><span class="wf-track"><span class="wf-zero" style="left:${P(0).toFixed(2)}%"></span><span class="wf-bar" style="left:${x0.toFixed(2)}%;width:${w.toFixed(2)}%"></span>${tgt}</span><span class="wf-val">${val}</span></div>`;
+  }).join('') + '</div>';
+}
+function renderResumen() {
+  const T = cc.T, g = res.gdp, a = res.act;
+  const head = `<div class="mx-h"></div><div class="mx-h"><i class="sw carry"></i>Arrastre</div><div class="mx-h"><i class="sw proj"></i>Dinámica requerida</div><div class="mx-h"><i class="sw"></i>Escenario</div>`;
+  const rg = recentAvg(cc.g, 4), ra = cc.a ? recentAvg(cc.a, 6) : null;
+  const recG = rg === null ? '' : `prom. últimos 4 trim.: ${pct(rg)}`;
+  const recA = ra === null ? '' : `prom. últimos 6 meses: ${pct(ra)}`;
+  // Composición: escala común a los dos años
+  const grp = (carryLab, carryV, dynLab, total, target) => {
+    const rows = [{ label: carryLab, a: 0, b: carryV, kind: 'carry' }];
+    if (dynLab) rows.push({ label: dynLab, a: carryV, b: total, kind: 'dyn' });
+    rows.push({ label: 'Crecimiento', a: 0, b: total, kind: 'total', target });
+    return rows;
+  };
+  const remG = pRange(4, cc.g.rem[0], cc.g.rem[cc.g.rem.length - 1]);
+  const W = {
+    gT: grp(`Arrastre ${qLabel(cc.g.last)}`, g.carryT, `Dinámica ${remG}`, g.growthT, g.modeT === 'manual' ? S.projT : null),
+    gN: grp(`Arrastre 4T ${T}`, g.carryT1, `Dinámica ${T + 1}`, g.growthT1, g.modeT1 === 'manual' ? S.projT1 : null),
+  };
+  if (a) {
+    W.aT = grp(`Arrastre ${mLabel(cc.a.last)}`, a.carryT, cc.a.rem.length ? `Dinámica ${pRange(12, cc.a.rem[0], cc.a.rem[cc.a.rem.length - 1])}` : null, a.growthT, a.modeT === 'manual' ? S.projT : null);
+    W.aN = grp(`Arrastre dic ${T}`, a.carryT1, `Dinámica ${T + 1}`, a.growthT1, a.modeT1 === 'manual' ? S.projT1 : null);
+  }
+  let lo = 0, hi = 0;
+  Object.values(W).forEach(rows => rows.forEach(r => { lo = Math.min(lo, r.a, r.b, r.target ?? 0); hi = Math.max(hi, r.a, r.b, r.target ?? 0); }));
+  const span = (hi - lo) || 1; lo -= span * 0.04; hi += span * 0.04;
+  const P = v => ((v - lo) / (hi - lo) * 100);
+
+  let h = head;
+  h += `<div class="mx-r">PIB<small>${remG} · t/t</small></div>`;
+  h += cellCarry(g.carryT, `Nivel de ${qLabel(cc.g.last)} constante`);
+  h += cellReq(g.reqT, 't/t', 4, recG);
+  h += cellScen(g.growthT, S.projT, g.modeT, `4T/4T ${pct(g.endT, 1)}`, 'gdp:T');
+  if (a) {
+    const hasRem = cc.a.rem.length > 0;
+    h += `<div class="mx-r">Actividad<small>${hasRem ? pRange(12, cc.a.rem[0], cc.a.rem[cc.a.rem.length - 1]) + ' · m/m' : 'año completo'}</small></div>`;
+    h += cellCarry(a.carryT, hasRem ? `Nivel de ${mLabel(cc.a.last)} constante` : 'Año completo');
+    h += hasRem ? cellReq(a.reqT, 'm/m', 12, recA) : cellReq(null, '', 12, '', 'Sin meses por proyectar');
+    h += cellScen(a.growthT, S.projT, a.modeT, `dic/dic ${pct(a.endT, 1)}`, 'act:T');
+  } else {
+    h += `<div class="mx-r">Actividad</div><div class="mx-c mx-na" style="grid-column: span 3">${esc(cc.actNote || 'Sin serie de actividad')}</div>`;
+  }
+  const wfT = `<div class="wf-wrap"><div class="wf-title">Composición del crecimiento, pp</div>${wfGroup('PIB', W.gT, P)}${a ? wfGroup('Actividad', W.aT, P) : ''}</div>`;
+  $('#yc-T').innerHTML = `<div class="card-h"><h2><span class="yr">${T}</span>Lo que queda del año</h2><span class="aside">Proyección <b>${pct(S.projT)}</b></span></div><div class="mx">${h}</div>${wfT}`;
+
+  let h1 = head;
+  h1 += `<div class="mx-r">PIB<small>T1–T4 · t/t</small></div>`;
+  h1 += cellCarry(g.carryT1, `Nivel del 4T ${T} del escenario`);
+  h1 += cellReq(g.reqT1, 't/t', 4, '');
+  h1 += cellScen(g.growthT1, S.projT1, g.modeT1, `4T/4T ${pct(g.endT1, 1)}`, 'gdp:N');
+  if (a) {
+    h1 += `<div class="mx-r">Actividad<small>ene–dic · m/m</small></div>`;
+    h1 += cellCarry(a.carryT1, `Nivel de dic ${T} del escenario`);
+    h1 += cellReq(a.reqT1, 'm/m', 12, '');
+    h1 += cellScen(a.growthT1, S.projT1, a.modeT1, `dic/dic ${pct(a.endT1, 1)}`, 'act:N');
+  }
+  const wfN = `<div class="wf-wrap"><div class="wf-title">Composición del crecimiento, pp</div>${wfGroup('PIB', W.gN, P)}${a ? wfGroup('Actividad', W.aN, P) : ''}</div>`;
+  $('#yc-T1').innerHTML = `<div class="card-h"><h2><span class="yr">${T + 1}</span>Año siguiente</h2><span class="aside">Proyección <b>${pct(S.projT1)}</b> · arrastre desde el escenario de ${T}</span></div><div class="mx">${h1}</div>${wfN}`;
+}
+
+/* ---------- Gráficos SVG ---------- */
+const charts = {};
+function niceScale(lo, hi, n = 5) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), e = raw / mag;
+  const step = (e >= 7.5 ? 10 : e >= 3.5 ? 5 : e >= 1.5 ? 2 : 1) * mag;
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step;
+  const ticks = []; for (let t = a; t <= b + step / 2; t += step) ticks.push(+t.toFixed(10));
+  const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return { lo: a, hi: b, ticks, dec };
+}
+const P2 = p => p.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('');
+function gridAxis(W, m, sc, Y) {
+  let s = '';
+  sc.ticks.forEach(t => {
+    s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/>`;
+    s += `<text x="${m.l - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${fmt(t, sc.dec)}</text>`;
+  });
+  return s;
+}
+function yearAxis(H, m, first, last, X, bw, P) {
+  let s = '';
+  for (let y = Math.floor(first / P); y <= Math.floor(last / P); y++) {
+    const a = Math.max(first, y * P), b = Math.min(last, y * P + P - 1);
+    if (y * P > first) { const xs = X(y * P) - bw / 2; s += `<line class="ysep" x1="${xs.toFixed(1)}" x2="${xs.toFixed(1)}" y1="${m.t}" y2="${H - m.b + 4}"/>`; }
+    if (b - a + 1 >= Math.min(P, 2)) s += `<text class="yl" x="${((X(a) + X(b)) / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${y}</text>`;
+  }
+  return s;
+}
+const srcName = (r, k) => k <= r.b.last ? 'Observado' : 'Escenario';
+const dims = el => ({ W: Math.round(el.clientWidth), H: Math.max(140, Math.round(el.clientHeight)) });
+
+function drawLevel(id, r) {
+  const el = document.getElementById(id), { W, H } = dims(el); if (!W) return;
+  const b = r.b, P = b.P, T = b.T, L = r.L, m = { l: 44, r: 10, t: 14, b: 22 };
+  const k0 = Math.max(b.start, (T - (P === 4 ? 3 : 2)) * P), k1 = (T + 1) * P + P - 1, n = k1 - k0 + 1;
+  const bw = (W - m.l - m.r) / n, X = k => m.l + (k - k0 + 0.5) * bw;
+  const base = sumY(L, P, T - 1) / P, I = v => v / base * 100;
+  const endT = T * P + P - 1, c0 = I(L[b.last]), c1 = I(L[endT]);
+  const vals = [c0, c1];
+  for (let k = k0; k <= k1; k++) vals.push(I(L[k]));
+  const yrs = [];
+  for (let y = Math.floor(k0 / P); y <= T + 1; y++) if (y * P >= k0) { yrs.push(y); vals.push(I(sumY(L, P, y) / P)); }
+  const sc = niceScale(Math.min(...vals), Math.max(...vals), H < 220 ? 3 : H > 340 ? 5 : 4);
+  const Y = v => m.t + (sc.hi - v) / (sc.hi - sc.lo) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Nivel desestacionalizado, observado y escenario">`;
+  const bx = X(b.last) + bw / 2;
+  s += `<rect class="band" x="${bx.toFixed(1)}" y="${m.t}" width="${Math.max(0, W - m.r - bx).toFixed(1)}" height="${H - m.t - m.b}"/>`;
+  s += gridAxis(W, m, sc, Y) + yearAxis(H, m, k0, k1, X, bw, P);
+  yrs.forEach(y => {
+    const xa = X(y * P) - bw * 0.42, xb = X(y * P + P - 1) + bw * 0.42, v = Y(I(sumY(L, P, y) / P));
+    s += `<line class="l-avg" x1="${xa.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${v.toFixed(1)}" y2="${v.toFixed(1)}"/>`;
+    if (y >= T - 1) {
+      const txt = y === T - 1 ? 'prom. = 100' : `${sgn(y === T ? r.growthT : r.growthT1, 2)}%`;
+      s += `<text class="lbl-avg" x="${xa.toFixed(1)}" y="${(v - 5).toFixed(1)}">${txt}</text>`;
+    }
+  });
+  if (b.last < endT) s += `<path class="l-carry" d="${P2([[X(b.last), Y(c0)], [X(endT) + bw * 0.42, Y(c0)]])}"/>`;
+  s += `<path class="l-carry" d="${P2([[X(endT), Y(c1)], [X(k1) + bw * 0.42, Y(c1)]])}"/>`;
+  const obs = []; for (let k = k0; k <= b.last; k++) obs.push([X(k), Y(I(L[k]))]);
+  const pr = []; for (let k = b.last; k <= k1; k++) pr.push([X(k), Y(I(L[k]))]);
+  s += `<path class="l-obs" d="${P2(obs)}"/><path class="l-proj" d="${P2(pr)}"/>`;
+  if (bw >= 9) pr.slice(1).forEach(p => { s += `<circle class="d-proj" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${P === 4 ? 3.5 : 2.8}"/>`; });
+  const lp = obs[obs.length - 1]; s += `<circle class="d-obs" cx="${lp[0].toFixed(1)}" cy="${lp[1].toFixed(1)}" r="4.5"/></svg>`;
+  el.innerHTML = s + '<div class="guide" hidden></div><div class="tip" hidden></div>';
+  const vn = P === 4 ? 't/t' : 'm/m';
+  charts[id] = { X: i => X(k0 + i), n, bw, m, H, tip: i => {
+    const k = k0 + i, v = L[k];
+    return `<div class="t">${perLab(P, k)}</div>`
+      + `<div class="r"><span>Índice</span><span>${fmt(I(v), 1)}</span></div>`
+      + `<div class="r"><span>${vn}</span><span>${L[k - 1] ? pct((v / L[k - 1] - 1) * 100) : '–'}</span></div>`
+      + `<div class="r"><span>a/a</span><span>${L[k - P] ? pct((v / L[k - P] - 1) * 100) : '–'}</span></div>`
+      + `<div class="s">${srcName(r, k)}</div>`;
+  } };
+}
+
+function drawGrowth(id, r) {
+  const el = document.getElementById(id), { W, H } = dims(el); if (!W) return;
+  const b = r.b, P = b.P, T = b.T, L = r.L, m = { l: 40, r: 10, t: 12, b: 22 };
+  const k0 = Math.max(b.start + P, (T - (P === 4 ? 3 : 2)) * P), k1 = (T + 1) * P + P - 1, n = k1 - k0 + 1;
+  const bw = (W - m.l - m.r) / n, X = k => m.l + (k - k0 + 0.5) * bw;
+  const pp = k => L[k - 1] ? (L[k] / L[k - 1] - 1) * 100 : null, yy = k => L[k - P] ? (L[k] / L[k - P] - 1) * 100 : null;
+  const vals = [0];
+  for (let k = k0; k <= k1; k++) { const a = pp(k), c = yy(k); if (a !== null) vals.push(a); if (c !== null) vals.push(c); }
+  const sc = niceScale(Math.min(...vals), Math.max(...vals), H < 220 ? 3 : H > 340 ? 5 : 4);
+  const Y = v => m.t + (sc.hi - v) / (sc.hi - sc.lo) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Variación del período y anual">`;
+  const bx = X(b.last) + bw / 2;
+  s += `<rect class="band" x="${bx.toFixed(1)}" y="${m.t}" width="${Math.max(0, W - m.r - bx).toFixed(1)}" height="${H - m.t - m.b}"/>`;
+  s += gridAxis(W, m, sc, Y) + yearAxis(H, m, k0, k1, X, bw, P);
+  s += `<line class="zero" x1="${m.l}" x2="${W - m.r}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+  const barW = Math.max(2, Math.min(18, bw * (P === 4 ? 0.55 : 0.62)));
+  for (let k = k0; k <= k1; k++) {
+    const v = pp(k); if (v === null) continue;
+    const y0 = Y(0), y1 = Y(v), top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+    s += `<rect class="${k <= b.last ? 'b-obs' : 'b-proj'}" x="${(X(k) - barW / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="${barW >= 6 ? 2 : 1}"/>`;
+  }
+  const yo = [], yp = [];
+  for (let k = k0; k <= k1; k++) { const c = yy(k); if (c === null) continue; const p = [X(k), Y(c)]; if (k <= b.last) yo.push(p); if (k >= b.last) yp.push(p); }
+  s += `<path class="l-yy" d="${P2(yo)}"/><path class="l-yy p" d="${P2(yp)}"/>`;
+  if (bw >= 9) yo.concat(yp.slice(1)).forEach(p => { s += `<circle class="d-yy" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6"/>`; });
+  s += '</svg>';
+  el.innerHTML = s + '<div class="guide" hidden></div><div class="tip" hidden></div>';
+  const vn = P === 4 ? 't/t' : 'm/m';
+  charts[id] = { X: i => X(k0 + i), n, bw, m, H, tip: i => {
+    const k = k0 + i, v = pp(k);
+    return `<div class="t">${perLab(P, k)}</div>`
+      + `<div class="r"><span>${vn}</span><span>${pct(v)}</span></div>`
+      + `<div class="r"><span>${vn} anualizada</span><span>${v === null ? '–' : pct(ann(v, P), 1)}</span></div>`
+      + `<div class="r"><span>a/a</span><span>${pct(yy(k))}</span></div>`
+      + `<div class="s">${srcName(r, k)}</div>`;
+  } };
+}
+
+function drawAll() {
+  if (!cc || !res) return;
+  const T = cc.T;
+  if (tab === 'gdp') {
+    drawLevel('ch-gl', res.gdp); drawGrowth('ch-gg', res.gdp);
+    $('#gl-sub').textContent = `índice, prom. ${T - 1} = 100`;
+  } else if (tab === 'act' && res.act) {
+    drawLevel('ch-al', res.act); drawGrowth('ch-ag', res.act);
+    $('#al-sub').textContent = `índice, prom. ${T - 1} = 100`;
+  }
+}
+
+// Capa de lectura al pasar el puntero
+function bindHover(id) {
+  const el = document.getElementById(id);
+  let hideT = null;
+  const hide = () => el.querySelectorAll('.guide,.tip').forEach(x => x.hidden = true);
+  const show = e => {
+    const c = charts[id]; if (!c) return;
+    const rect = el.getBoundingClientRect();
+    let i = Math.round((e.clientX - rect.left - c.m.l) / c.bw - 0.5); i = Math.max(0, Math.min(c.n - 1, i));
+    const x = c.X(i), g = el.querySelector('.guide'), t = el.querySelector('.tip');
+    if (!g || !t) return;
+    g.hidden = false; g.style.left = x + 'px'; g.style.top = c.m.t + 'px'; g.style.height = (c.H - c.m.t - c.m.b) + 'px';
+    t.innerHTML = c.tip(i); t.hidden = false;
+    const tw = t.offsetWidth, W = el.clientWidth;
+    let left = x + 12; if (left + tw > W) left = x - 12 - tw; if (left < 0) left = Math.max(0, W - tw);
+    t.style.left = left + 'px'; t.style.top = (c.m.t + 4) + 'px';
+    clearTimeout(hideT);
+    if (e.pointerType !== 'mouse') hideT = setTimeout(hide, 3500);
+  };
+  el.addEventListener('pointermove', show);
+  el.addEventListener('pointerdown', show);
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+}
+
+/* ---------- Tablas (formato ancho: períodos en filas, años en columnas) ---------- */
+function tableWide(r) {
+  const b = r.b, P = b.P, T = b.T, L = r.L, base = sumY(L, P, T - 1) / P;
+  const years = [T - 1, T, T + 1], vn = P === 4 ? 't/t' : 'm/m';
+  let h = `<thead><tr><th></th>${years.map(y => `<th colspan="3" class="g0">${y}</th>`).join('')}</tr><tr><th>${P === 4 ? 'Trim.' : 'Mes'}</th>${years.map(() => `<th class="g0">Índice</th><th>${vn}</th><th>a/a</th>`).join('')}</tr></thead><tbody>`;
+  for (let j = 0; j < P; j++) {
+    h += `<tr><td>${P === 4 ? 'T' + (j + 1) : MESES[j]}</td>`;
+    years.forEach(y => {
+      const k = y * P + j, v = L[k], sc = k > b.last ? ' sc' : '';
+      const pv = L[k - 1] ? (v / L[k - 1] - 1) * 100 : null, yv = L[k - P] ? (v / L[k - P] - 1) * 100 : null;
+      h += `<td class="g0${sc}">${v === undefined ? '–' : fmt(v / base * 100, 1)}</td><td class="${sc.trim()}">${fmt(pv)}</td><td class="${sc.trim()}">${fmt(yv)}</td>`;
+    });
+    h += '</tr>';
+  }
+  const g = y => y === T ? r.growthT : y === T + 1 ? r.growthT1 : ((y - 1) * P >= b.start ? growthY(L, P, y) : null);
+  const carry = y => y === T ? r.carryT : y === T + 1 ? r.carryT1 : null;
+  const end = y => L[y * P - 1] ? (L[y * P + P - 1] / L[y * P - 1] - 1) * 100 : null;
+  const foot = (lab, f) => `<tr><td>${lab}</td>${years.map(y => `<td class="g0" colspan="3">${f(y) === null ? '' : pct(f(y))}</td>`).join('')}</tr>`;
+  h += `</tbody><tfoot>${foot('Crecimiento anual', g)}${foot('Arrastre', carry)}${foot(P === 4 ? '4T/4T' : 'dic/dic', end)}</tfoot>`;
+  return h;
+}
+function renderTables() {
+  if (!cc || !res) return;
+  $('#tbl-g').innerHTML = tableWide(res.gdp);
+  $('#tbl-a').innerHTML = res.act ? tableWide(res.act) : `<tbody><tr><td>${esc(cc.actNote || 'Este país no tiene serie de actividad mensual.')}</td></tr></tbody>`;
+  $('#copy-a').disabled = !res.act;
+}
+function copySeries(r, btn) {
+  if (!r) return;
+  const b = r.b, P = b.P, T = b.T, L = r.L, base = sumY(L, P, T - 1) / P;
+  const f = (v, k = 2) => (v === null || v === undefined || !isFinite(v)) ? '' : v.toFixed(k);
+  const name = (dataset.countries.find(c => keyOf(c) === curKey) || {}).name || '';
+  const lines = [`País\tPeríodo\tNivel\tÍndice (prom. ${T - 1} = 100)\t${P === 4 ? 't/t' : 'm/m'} %\ta/a %\tOrigen`];
+  for (let k = (T - 1) * P; k <= (T + 1) * P + P - 1; k++) {
+    lines.push([name, perLab(P, k), f(L[k], P === 4 ? 1 : 2), f(L[k] / base * 100, 2), f(L[k - 1] ? (L[k] / L[k - 1] - 1) * 100 : null, 3), f(L[k - P] ? (L[k] / L[k - P] - 1) * 100 : null, 3), srcName(r, k)].join('\t'));
+  }
+  lines.push('', `Año\tCrecimiento %\tArrastre %`, `${T}\t${f(r.growthT, 3)}\t${f(r.carryT, 3)}`, `${T + 1}\t${f(r.growthT1, 3)}\t${f(r.carryT1, 3)}`);
+  const txt = lines.join('\n');
+  const done = ok => { btn.textContent = ok ? 'Copiado' : 'No se pudo copiar'; setTimeout(() => btn.textContent = 'Copiar datos', 2200); };
+  const fallback = () => { const ta = $('#copy-fallback'); ta.value = txt; ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} done(ok); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), fallback); } catch (e) { fallback(); }
+}
+
+/* ---------- App móvil (solo PIB, dinámica requerida) ---------- */
+function mMsg(kind, text) { const m = $('#m-msg'); m.className = 'm-msg ' + kind; m.textContent = text; }
+function renderMobileSource(i) {
+  const meta = $('#m-meta');
+  meta.className = 'm-meta ' + i.cls;
+  const cov = cc ? ` · PIB hasta ${qLabel(cc.g.last)}` : '';
+  const st = source === 'cloud' ? (cloud.status === 'on' ? 'Sincronizado' : 'Conectando…')
+    : source === 'repo' ? 'Datos del repositorio'
+    : source === 'local' ? 'Solo en este dispositivo' : source === 'example' ? 'Datos de ejemplo' : i.short;
+  meta.querySelector('span').textContent = st + (dataset ? cov : '');
+  $('#m-sync').className = 'm-sync ' + i.cls;
+  $('#m-sync-text').innerHTML = `<b>${esc(dataset && source !== 'example' ? (dataset.fileName || 'Excel') : (source === 'example' ? 'Datos de ejemplo' : 'Sin datos'))}</b>${esc(i.long)}`;
+  const canUp = !cloud.db || cloud.canEdit;
+  $('#m-up').hidden = !canUp;
+  $('#m-save').hidden = !i.canSave;
+  $('#m-ex').hidden = source === 'example';
+  $('#m-mine').hidden = !((source === 'example' || (STANDALONE && source === 'local')) && cloud.exists);
+  $('#m-dlist').innerHTML = dataset ? dataset.countries.map(c => {
+    const k = countryCtx(c);
+    return k.error ? `<li class="bad">${esc(c.name)}<span>${esc(k.error)}</span></li>` : `<li>${esc(c.name)}<span>PIB hasta ${qLabel(k.g.last)}</span></li>`;
+  }).join('') : '';
+}
+function renderMobileCountries() {
+  const box = $('#m-chips');
+  if (!dataset) { box.innerHTML = ''; return; }
+  box.innerHTML = dataset.countries.map(c => {
+    const k = countryCtx(c);
+    return `<button class="m-chip" type="button" role="radio" aria-checked="false" data-key="${esc(keyOf(c))}"${k.error ? ` disabled title="${esc(k.error)}"` : ''}>${esc(c.name)}</button>`;
+  }).join('');
+  syncMobileChips(false);
+}
+function syncMobileChips(scroll) {
+  let sel = null;
+  document.querySelectorAll('#m-chips .m-chip').forEach(b => {
+    const on = b.dataset.key === curKey;
+    b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1;
+    if (on) sel = b;
+  });
+  if (scroll && sel && isMobile()) {
+    const box = $('#m-chips'), l = sel.offsetLeft - (box.clientWidth - sel.offsetWidth) / 2;
+    box.scrollTo({ left: Math.max(0, l), behavior: 'smooth' });
+  }
+}
+function mCardHTML(w) {
+  const T = cc.T, yr = w === 'T' ? T : T + 1, g = cc.g;
+  const lab = w === 'T' ? `Lo que queda del año` : `Año siguiente`;
+  const per = w === 'T' ? pRange(4, g.rem[0], g.rem[g.rem.length - 1]) : 'T1–T4';
+  return `<div class="m-yr"><span class="m-yr-n">${yr}</span><span class="m-yr-l">${lab}</span></div>
+    <div class="m-proj"><span class="m-lbl">Proyección PIB</span>
+      <div class="m-step">
+        <button class="m-sbtn" type="button" data-w="${w}" data-d="-0.1" aria-label="Bajar la proyección ${yr} en 0.1">−</button>
+        <label class="m-pv"><input id="m-n-${w}" inputmode="decimal" autocomplete="off" aria-label="Proyección ${yr}"><span>%</span></label>
+        <button class="m-sbtn" type="button" data-w="${w}" data-d="0.1" aria-label="Subir la proyección ${yr} en 0.1">+</button>
+      </div>
+    </div>
+    <input type="range" class="m-range" id="m-r-${w}" step="0.05" aria-label="Proyección ${yr}">
+    <div class="m-hero"><span class="m-lbl">Dinámica requerida<em>${per}</em></span>
+      <div class="m-big"><b id="m-req-${w}">–</b><small>% t/t</small></div>
+      <div class="m-sub" id="m-reqs-${w}"></div>
+    </div>
+    <div class="m-eq" id="m-eq-${w}"></div>
+    <div id="m-warn-${w}"></div>`;
+}
+let mBuiltFor = null;
+function buildMobileCards() {
+  if (!cc) return;
+  const sig = `${curKey}|${cc.T}|${cc.g.last}`;
+  if (mBuiltFor === sig) return;
+  mBuiltFor = sig;
+  ['T', 'T1'].forEach(w => {
+    $('#m-' + w).innerHTML = mCardHTML(w);
+    const r = $('#m-r-' + w), n = $('#m-n-' + w);
+    const key = w === 'T' ? 'projT' : 'projT1';
+    const base = computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() }));
+    const c0 = Math.round(w === 'T' ? base.gdp.carryT : base.gdp.carryT1);
+    r.min = Math.min(c0 - 5, Math.floor(S[key]) - 1); r.max = Math.max(c0 + 5, Math.ceil(S[key]) + 1);
+    r.addEventListener('input', () => setProjM(w, parseFloat(r.value)));
+    n.addEventListener('input', () => { const v = parseNum(n.value); if (isFinite(v)) setProjM(w, v); });
+    n.addEventListener('blur', () => update());
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') n.blur(); });
+    $('#m-' + w).querySelectorAll('.m-sbtn').forEach(b => b.addEventListener('click', () => setProjM(w, Math.round((S[key] + parseFloat(b.dataset.d)) * 100) / 100)));
+  });
+}
+function setProjM(w, v) {
+  if (!S) return;
+  if (w === 'T') { S.projT = v; S.gdp.pathT = 'impl'; S.act.pathT = 'impl'; }
+  else { S.projT1 = v; S.gdp.pathT1 = 'impl'; S.act.pathT1 = 'impl'; }
+  update();
+}
+function renderMobile() {
+  if (!cc || !isMobile()) return;
+  buildMobileCards();
+  // En el teléfono se muestra siempre la dinámica requerida del PIB
+  const m = computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() })).gdp;
+  const T = cc.T, rec = recentAvg(cc.g, 4);
+  ['T', 'T1'].forEach(w => {
+    const isT = w === 'T', key = isT ? 'projT' : 'projT1', proj = S[key];
+    const r = $('#m-r-' + w), n = $('#m-n-' + w);
+    if (!r) return;
+    if (proj < +r.min) r.min = Math.floor(proj - 1);
+    if (proj > +r.max) r.max = Math.ceil(proj + 1);
+    r.value = proj; r.style.setProperty('--p', ((proj - r.min) / (r.max - r.min) * 100).toFixed(2) + '%');
+    if (document.activeElement !== n) n.value = fmt(proj, 2);
+    const req = isT ? m.reqT : m.reqT1, carry = isT ? m.carryT : m.carryT1, ok = isT ? m.okT : m.okT1;
+    $('#m-req-' + w).textContent = req === null ? '–' : fmt(req, 2);
+    $('#m-reqs-' + w).innerHTML = req === null ? 'Ninguna tasa constante razonable logra esa proyección.'
+      : `<b>${pct(ann(req, 4), 1)}</b> anualizada` + (isT && rec !== null ? ` · últimos 4 trim. <b>${pct(rec)}</b>` : ` · arrastre desde el 4T de ${T}`);
+    const dyn = (isT ? m.growthT : m.growthT1) - carry;
+    $('#m-eq-' + w).innerHTML = `<div class="m-eqi"><span><i class="d c"></i>Arrastre</span><b>${pct(carry)}</b></div><span class="m-op">+</span>`
+      + `<div class="m-eqi"><span><i class="d r"></i>Dinámica</span><b>${sgn(dyn)}<small style="font-size:12px;font-weight:600"> pp</small></b></div><span class="m-op">=</span>`
+      + `<div class="m-eqi"><span>Proyección</span><b>${pct(isT ? m.growthT : m.growthT1)}</b></div>`;
+    const manual = isT ? S.gdp.pathT === 'manual' : S.gdp.pathT1 === 'manual';
+    $('#m-warn-' + w).innerHTML = !ok ? '' : manual ? `<div class="m-warn">En el computador este año tiene tasas manuales; aquí se muestra la dinámica requerida.</div>` : '';
+  });
+  drawMobileChart(m);
+  renderSource();
+}
+function drawMobileChart(r) {
+  const el = $('#m-chart'), W = Math.round(el.clientWidth), H = Math.round(el.clientHeight) || 190;
+  if (!W) return;
+  const b = r.b, T = b.T, L = r.L, m = { l: 30, r: 4, t: 16, b: 24 };
+  const k0 = Math.max(b.start + 1, (T - 2) * 4), k1 = (T + 1) * 4 + 3, n = k1 - k0 + 1;
+  const bw = (W - m.l - m.r) / n, X = k => m.l + (k - k0 + 0.5) * bw;
+  const pp = k => (L[k] / L[k - 1] - 1) * 100;
+  const vals = [0]; for (let k = k0; k <= k1; k++) vals.push(pp(k));
+  const sc = niceScale(Math.min(...vals), Math.max(...vals), 3);
+  const Y = v => m.t + (sc.hi - v) / (sc.hi - sc.lo) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Variación trimestral del PIB observada y requerida">`;
+  sc.ticks.forEach(t => { s += `<line class="g" x1="${m.l}" x2="${W - m.r}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text x="${m.l - 6}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${fmt(t, sc.dec)}</text>`; });
+  s += `<line class="z" x1="${m.l}" x2="${W - m.r}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+  const barW = Math.max(4, Math.min(22, bw * 0.62));
+  for (let k = k0; k <= k1; k++) {
+    const v = pp(k), y0 = Y(0), y1 = Y(v), top = Math.min(y0, y1), h = Math.max(1.5, Math.abs(y1 - y0)), proj = k > b.last;
+    s += `<rect class="${proj ? 'br' : 'bo'}" x="${(X(k) - barW / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(5, barW / 2).toFixed(1)}"/>`;
+    if (proj && (k === b.last + 1 || k === (T + 1) * 4) && bw >= 14) s += `<text class="v" x="${X(k).toFixed(1)}" y="${(v >= 0 ? top - 4 : top + h + 11).toFixed(1)}" text-anchor="middle">${fmt(v, 2)}</text>`;
+  }
+  for (let y = Math.floor(k0 / 4); y <= T + 1; y++) {
+    const a = Math.max(k0, y * 4), e = y * 4 + 3;
+    s += `<text class="y" x="${((X(a) + X(e)) / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle">${y}</text>`;
+  }
+  el.innerHTML = s + '</svg>';
+}
+function openSheet(on) {
+  const sh = $('#m-sheet'), bk = $('#m-back');
+  if (on) {
+    sh.hidden = false; bk.hidden = false; mMsg('', '');
+    requestAnimationFrame(() => { sh.classList.add('on'); bk.classList.add('on'); $('#m-close').focus(); });
+  } else {
+    sh.classList.remove('on'); bk.classList.remove('on');
+    setTimeout(() => { sh.hidden = true; bk.hidden = true; }, 320);
+    $('#m-open').focus();
+  }
+}
+function bindMobile() {
+  $('#m-chips').addEventListener('click', e => { const b = e.target.closest('.m-chip'); if (b && !b.disabled) selectCountry(b.dataset.key); });
+  $('#m-chips').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const bs = [...document.querySelectorAll('#m-chips .m-chip:not(:disabled)')], i = bs.findIndex(b => b.dataset.key === curKey);
+    const nb = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+    if (nb) { selectCountry(nb.dataset.key); nb.focus(); }
+  });
+  $('#m-open').addEventListener('click', () => openSheet(true));
+  $('#m-close').addEventListener('click', () => openSheet(false));
+  $('#m-back').addEventListener('click', () => openSheet(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#m-sheet').hidden) openSheet(false); });
+  const file = $('#file');
+  $('#m-up').addEventListener('click', () => file.click());
+  $('#m-empty-up').addEventListener('click', () => file.click());
+  $('#m-ex').addEventListener('click', () => { useExample(); openSheet(false); });
+  $('#m-empty-ex').addEventListener('click', useExample);
+  $('#m-mine').addEventListener('click', () => { useMine(); openSheet(false); });
+  $('#m-save').addEventListener('click', () => saveLocalToCloud(mMsg));
+  mq.addEventListener('change', () => { if (isMobile()) { mBuiltFor = null; renderMobile(); syncMobileChips(true); } else requestAnimationFrame(drawAll); });
+}
+
+/* ---------- Inicio ---------- */
+if (STANDALONE) {
+  $('#btn-mine').textContent = 'Usar datos del repositorio'; $('#m-mine').textContent = 'Usar datos del repositorio';
+  $('#m-note').textContent = 'Para tener los mismos datos en todos tus dispositivos, sube el Excel al repositorio con el nombre datos.xlsx. Un archivo cargado aquí queda solo en este dispositivo.';
+  $('#m-foot').textContent = 'PIB desestacionalizado. Para ver la actividad y las tasas manuales, abre esta página en el computador.';
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+restore();
+bindStatic();
+bindMobile();
+if (dataset) setDataset(dataset, source); else showEmpty('loading');
+connectCloud();
+['ch-gl', 'ch-gg', 'ch-al', 'ch-ag'].forEach(bindHover);
+let rz = null;
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (isMobile()) { if (res) drawMobileChart(computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() })).gdp); } else drawAll(); }); });
+  ro.observe($('.views')); ro.observe($('#m-chart'));
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!isMobile()) drawAll(); });
+</script>
+
+</body>
+</html>
