@@ -64,6 +64,7 @@
   --m-carry: #0c917f;
   --m-obs: #2b6cb0;
   --m-thumb: #ffffff;
+  --m-seg-on: #ffffff;
   --f-round: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --f-sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
 }
@@ -77,7 +78,7 @@
     --m-stroke: rgba(255, 255, 255, 0.11); --m-hair: rgba(255, 255, 255, 0.08); --m-hi: rgba(255, 255, 255, 0.10);
     --m-shadow: rgba(0, 0, 0, 0.55); --m-ink: #eef4f7; --m-ink-2: #aab8bf; --m-ink-3: #7f8f97;
     --m-tint: #eaf2f6; --m-tint-ink: #0b1720; --m-track: rgba(255, 255, 255, 0.16);
-    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9;
+    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9; --m-seg-on: rgba(255, 255, 255, 0.2);
     color-scheme: dark;
   }
 }
@@ -90,7 +91,7 @@
     --m-stroke: rgba(255, 255, 255, 0.11); --m-hair: rgba(255, 255, 255, 0.08); --m-hi: rgba(255, 255, 255, 0.10);
     --m-shadow: rgba(0, 0, 0, 0.55); --m-ink: #eef4f7; --m-ink-2: #aab8bf; --m-ink-3: #7f8f97;
     --m-tint: #eaf2f6; --m-tint-ink: #0b1720; --m-track: rgba(255, 255, 255, 0.16);
-    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9;
+    --m-req: #ff7a3d; --m-carry: #2cc2ab; --m-obs: #6aa2e8; --m-thumb: #f4f7f9; --m-seg-on: rgba(255, 255, 255, 0.2);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -417,6 +418,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px colo
   body::before { background: var(--m-bar); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
   .mob { display: block; }
 }
+/* Sin zoom al tocar dos veces: el navegador solo permite desplazar */
+@media (max-width: 979px) { html { touch-action: manipulation; } }
+.mob, .mob * { touch-action: manipulation; }
+.mob button, .m-chip, .m-yr, .m-lbl, .m-big, .m-sub, .m-eqi, .m-legend, .m-title, .m-meta, .m-rl, .m-chart { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .mob { position: relative; min-height: 100%; color: var(--m-ink); font-family: var(--f-sys); font-size: 16px; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
 .mob button { font-family: var(--f-sys); cursor: pointer; }
 .m-aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none;
@@ -483,11 +488,28 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px colo
 .mob input.m-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; margin: 6px 0 2px; background: transparent; --p: 50%; touch-action: pan-y; }
 .mob input.m-range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--m-tint) var(--p), var(--m-track) var(--p)); }
 .mob input.m-range::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--m-tint) var(--p), var(--m-track) var(--p)); }
-.mob input.m-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 38px; height: 24px; margin-top: -9px; border-radius: 12px; background: var(--m-thumb);
+.mob input.m-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 38px; height: 24px; margin-top: -9px; border: 0; border-radius: 12px; background: var(--m-thumb);
   box-shadow: 0 0.5px 4px rgba(0, 0, 0, .14), 0 6px 14px rgba(0, 0, 0, .14), inset 0 0 0 0.5px rgba(0, 0, 0, .05); }
 .mob input.m-range::-moz-range-thumb { width: 38px; height: 24px; border: 0; border-radius: 12px; background: var(--m-thumb); box-shadow: 0 0.5px 4px rgba(0, 0, 0, .14), 0 6px 14px rgba(0, 0, 0, .14); }
 .mob input.m-range:focus-visible { outline: none; }
 .mob input.m-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in oklab, var(--m-req) 35%, transparent); }
+.m-seg { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 999px; background: var(--m-track); }
+.m-segb { border: 0; background: transparent; border-radius: 999px; padding: 8px 10px; font-size: 15px; font-weight: 600; color: var(--m-ink-2); transition: background-color .2s, color .2s; }
+.m-segb[aria-checked="true"] { background: var(--m-seg-on); color: var(--m-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 4px 10px -4px var(--m-shadow); }
+.m-segb:focus-visible { outline: 2px solid var(--m-req); outline-offset: 2px; }
+.m-rates { margin-top: 12px; display: grid; gap: 2px; }
+.m-rrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) 66px; align-items: center; gap: 10px; }
+.m-rrow.all { padding-bottom: 6px; margin-bottom: 4px; border-bottom: 0.5px solid var(--m-hair); }
+.m-rl { font-size: 15px; color: var(--m-ink-2); font-variant-numeric: tabular-nums; }
+.m-rrow.all .m-rl { color: var(--m-ink); font-weight: 600; }
+.m-rn { width: 66px; border: 0.5px solid var(--m-stroke); background: var(--m-glass-2); border-radius: 10px; padding: 6px 8px; color: var(--m-ink); text-align: right;
+  font-family: var(--f-round); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-rn:focus-visible { outline: 2px solid var(--m-req); outline-offset: 1px; }
+.mob input.m-range.m-rate { margin: 0; --a: 50%; --b: 50%; }
+.mob input.m-range.m-rate::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--m-track) var(--a), var(--m-req) var(--a), var(--m-req) var(--b), var(--m-track) var(--b)); }
+.mob input.m-range.m-rate::-moz-range-track { background: linear-gradient(to right, var(--m-track) var(--a), var(--m-req) var(--a), var(--m-req) var(--b), var(--m-track) var(--b)); }
+.mob input.m-range.m-rate::-webkit-slider-thumb { width: 30px; height: 22px; margin-top: -8px; border-radius: 11px; }
+.m-big.man { color: var(--m-ink); }
 .m-hero { margin-top: 12px; padding-top: 14px; border-top: 0.5px solid var(--m-hair); display: grid; gap: 2px; }
 .m-big { display: flex; align-items: baseline; gap: 6px; font-family: var(--f-round); font-variant-numeric: tabular-nums; color: var(--m-req); }
 .m-big b { font-size: 56px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
@@ -796,9 +818,9 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px colo
     <section class="m-card" id="m-ch" hidden>
       <div class="m-card-h"><h2>Variación t/t del PIB</h2><span>%</span></div>
       <div class="m-chart" id="m-chart"></div>
-      <div class="m-legend"><span><i style="background:var(--m-obs)"></i>Observada</span><span><i style="background:var(--m-req)"></i>Requerida</span></div>
+      <div class="m-legend"><span><i style="background:var(--m-obs)"></i>Observada</span><span><i style="background:var(--m-req)"></i><span id="m-leg-p">Requerida</span></span></div>
     </section>
-    <p class="m-foot" id="m-foot" hidden>PIB desestacionalizado. Para ver la actividad y las tasas manuales, abre el artefacto en el computador.</p>
+    <p class="m-foot" id="m-foot" hidden>PIB desestacionalizado. Para ver la actividad, abre el artefacto en el computador.</p>
   </main>
   <div class="m-back" id="m-back" hidden></div>
   <section class="m-sheet" id="m-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="m-sheet-t">
@@ -2075,13 +2097,29 @@ function mCardHTML(w) {
       </div>
     </div>
     <input type="range" class="m-range" id="m-r-${w}" step="0.05" aria-label="Proyección ${yr}">
-    <div class="m-hero"><span class="m-lbl">Dinámica requerida<em>${per}</em></span>
-      <div class="m-big"><b id="m-req-${w}">–</b><small>% t/t</small></div>
+    <div class="m-seg" role="radiogroup" aria-label="Dinámica ${yr}">
+      <button type="button" role="radio" class="m-segb" data-mode="impl" aria-checked="true">Requerida</button>
+      <button type="button" role="radio" class="m-segb" data-mode="manual" aria-checked="false">Manual</button>
+    </div>
+    ${mRatesHTML(w)}
+    <div class="m-hero"><span class="m-lbl" id="m-hl-${w}">Dinámica requerida<em>${per}</em></span>
+      <div class="m-big" id="m-bg-${w}"><b id="m-req-${w}">–</b><small id="m-un-${w}">% t/t</small></div>
       <div class="m-sub" id="m-reqs-${w}"></div>
     </div>
-    <div class="m-eq" id="m-eq-${w}"></div>
-    <div id="m-warn-${w}"></div>`;
+    <div class="m-eq" id="m-eq-${w}"></div>`;
 }
+// Filas de tasas t/t manuales: «Todos» y una por trimestre
+function mRatesHTML(w) {
+  const ks = w === 'T' ? cc.g.rem : cc.g.next;
+  const row = (id, lab, aria, cls) => `<div class="m-rrow${cls}"><span class="m-rl">${lab}</span><input type="range" class="m-range m-rate" id="m-ra-${id}" min="-2" max="2" step="0.01" aria-label="${aria}"><input class="m-rn" id="m-rn-${id}" inputmode="decimal" autocomplete="off" aria-label="${aria}"></div>`;
+  let h = `<div class="m-rates" id="m-rates-${w}" hidden>`;
+  if (ks.length > 1) h += row(`${w}-all`, 'Todos', 'Misma tasa t/t para todos los trimestres', ' all');
+  ks.forEach((k, i) => { h += row(`${w}-${i}`, qS(k), `Tasa t/t ${qLabel(k)}`, ''); });
+  return h + '</div>';
+}
+// Resultado del PIB en el teléfono: usa el modo de cada año (requerida o manual)
+const mobileRes = () => computeAll(cc, Object.assign({}, S, { act: IMPL() })).gdp;
+const mKeys = w => w === 'T' ? { path: 'pathT', man: 'manualT', rates: 'ratesT', mode: 'modeT' } : { path: 'pathT1', man: 'manualT1', rates: 'ratesT1', mode: 'modeT1' };
 let mBuiltFor = null;
 function buildMobileCards() {
   if (!cc) return;
@@ -2100,6 +2138,32 @@ function buildMobileCards() {
     n.addEventListener('blur', () => update());
     n.addEventListener('keydown', e => { if (e.key === 'Enter') n.blur(); });
     $('#m-' + w).querySelectorAll('.m-sbtn').forEach(b => b.addEventListener('click', () => setProjM(w, Math.round((S[key] + parseFloat(b.dataset.d)) * 100) / 100)));
+    // Requerida / Manual
+    const K = mKeys(w), nP = (w === 'T' ? cc.g.rem : cc.g.next).length;
+    const ensure = () => {
+      const g = S.gdp;
+      if (g[K.path] !== 'manual' || !Array.isArray(g[K.man]) || g[K.man].length !== nP) g[K.man] = mobileRes()[K.rates].slice();
+      g[K.path] = 'manual';
+    };
+    $('#m-' + w).querySelectorAll('.m-segb').forEach(b => b.addEventListener('click', () => {
+      // Al volver a «Manual» se recuperan las últimas tasas manuales de ese año
+      if (b.dataset.mode === 'manual') {
+        const g = S.gdp;
+        if (!Array.isArray(g[K.man]) || g[K.man].length !== nP) g[K.man] = mobileRes()[K.rates].slice();
+        g[K.path] = 'manual';
+      } else S.gdp[K.path] = 'impl';
+      update();
+    }));
+    const bindRate = (id, set) => {
+      const ra = $('#m-ra-' + id), rn = $('#m-rn-' + id);
+      if (!ra) return;
+      ra.addEventListener('input', () => set(Math.round(parseFloat(ra.value) * 100) / 100));
+      rn.addEventListener('input', () => { const v = parseNum(rn.value); if (isFinite(v)) set(v); });
+      rn.addEventListener('blur', () => update());
+      rn.addEventListener('keydown', e => { if (e.key === 'Enter') rn.blur(); });
+    };
+    for (let i = 0; i < nP; i++) bindRate(`${w}-${i}`, v => { ensure(); S.gdp[K.man][i] = v; update(); });
+    bindRate(`${w}-all`, v => { ensure(); S.gdp[K.man] = S.gdp[K.man].map(() => v); update(); });
   });
 }
 function setProjM(w, v) {
@@ -2111,8 +2175,7 @@ function setProjM(w, v) {
 function renderMobile() {
   if (!cc || !isMobile()) return;
   buildMobileCards();
-  // En el teléfono se muestra siempre la dinámica requerida del PIB
-  const m = computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() })).gdp;
+  const m = mobileRes();
   const T = cc.T, rec = recentAvg(cc.g, 4);
   ['T', 'T1'].forEach(w => {
     const isT = w === 'T', key = isT ? 'projT' : 'projT1', proj = S[key];
@@ -2122,17 +2185,48 @@ function renderMobile() {
     if (proj > +r.max) r.max = Math.ceil(proj + 1);
     r.value = proj; r.style.setProperty('--p', ((proj - r.min) / (r.max - r.min) * 100).toFixed(2) + '%');
     if (document.activeElement !== n) n.value = fmt(proj, 2);
-    const req = isT ? m.reqT : m.reqT1, carry = isT ? m.carryT : m.carryT1, ok = isT ? m.okT : m.okT1;
-    $('#m-req-' + w).textContent = req === null ? '–' : fmt(req, 2);
-    $('#m-reqs-' + w).innerHTML = req === null ? 'Ninguna tasa constante razonable logra esa proyección.'
-      : `<b>${pct(ann(req, 4), 1)}</b> anualizada` + (isT && rec !== null ? ` · últimos 4 trim. <b>${pct(rec)}</b>` : ` · arrastre desde el 4T de ${T}`);
-    const dyn = (isT ? m.growthT : m.growthT1) - carry;
+    const K = mKeys(w), manual = m[K.mode] === 'manual';
+    const req = isT ? m.reqT : m.reqT1, carry = isT ? m.carryT : m.carryT1, growth = isT ? m.growthT : m.growthT1;
+    const yr = isT ? T : T + 1, per = isT ? pRange(4, cc.g.rem[0], cc.g.rem[cc.g.rem.length - 1]) : 'T1–T4';
+    $('#m-' + w).querySelectorAll('.m-segb').forEach(b => b.setAttribute('aria-checked', String((b.dataset.mode === 'manual') === manual)));
+    $('#m-rates-' + w).hidden = !manual;
+    $('#m-bg-' + w).classList.toggle('man', manual);
+    if (manual) {
+      const gap = growth - proj;
+      $('#m-hl-' + w).innerHTML = `Crecimiento con tasas manuales<em>${yr}</em>`;
+      $('#m-req-' + w).textContent = fmt(growth, 2);
+      $('#m-un-' + w).textContent = '%';
+      $('#m-reqs-' + w).innerHTML = (Math.abs(gap) < 0.005 ? 'Igual a la proyección' : `<b>${fmt(Math.abs(gap), 2)} pp</b> ${gap > 0 ? 'sobre' : 'bajo'} la proyección`)
+        + (req === null ? '' : ` · requerida <b>${pct(req)}</b> t/t`);
+      const rates = m[K.rates];
+      const syncRate = (id, v, show) => {
+        const ra = $('#m-ra-' + id), rn = $('#m-rn-' + id);
+        if (!ra) return;
+        if (v < +ra.min) ra.min = Math.floor(v - 0.5);
+        if (v > +ra.max) ra.max = Math.ceil(v + 0.5);
+        if (document.activeElement !== ra) ra.value = v;
+        setTrack(ra);
+        if (document.activeElement !== rn) rn.value = show ? fmt(v, 2) : '';
+        rn.placeholder = show ? '' : 'varias';
+      };
+      rates.forEach((v, i) => syncRate(`${w}-${i}`, v, true));
+      if (rates.length > 1) {
+        const same = rates.every(v => Math.abs(v - rates[0]) < 1e-9);
+        syncRate(`${w}-all`, rates.reduce((a, v) => a + v, 0) / rates.length, same);
+      }
+    } else {
+      $('#m-hl-' + w).innerHTML = `Dinámica requerida<em>${per}</em>`;
+      $('#m-req-' + w).textContent = req === null ? '–' : fmt(req, 2);
+      $('#m-un-' + w).textContent = '% t/t';
+      $('#m-reqs-' + w).innerHTML = req === null ? 'Ninguna tasa constante razonable logra esa proyección.'
+        : `<b>${pct(ann(req, 4), 1)}</b> anualizada` + (isT && rec !== null ? ` · últimos 4 trim. <b>${pct(rec)}</b>` : ` · arrastre desde el 4T de ${T}`);
+    }
+    const dyn = growth - carry;
     $('#m-eq-' + w).innerHTML = `<div class="m-eqi"><span><i class="d c"></i>Arrastre</span><b>${pct(carry)}</b></div><span class="m-op">+</span>`
       + `<div class="m-eqi"><span><i class="d r"></i>Dinámica</span><b>${sgn(dyn)}<small style="font-size:12px;font-weight:600"> pp</small></b></div><span class="m-op">=</span>`
-      + `<div class="m-eqi"><span>Proyección</span><b>${pct(isT ? m.growthT : m.growthT1)}</b></div>`;
-    const manual = isT ? S.gdp.pathT === 'manual' : S.gdp.pathT1 === 'manual';
-    $('#m-warn-' + w).innerHTML = !ok ? '' : manual ? `<div class="m-warn">En el computador este año tiene tasas manuales; aquí se muestra la dinámica requerida.</div>` : '';
+      + `<div class="m-eqi"><span>${manual ? 'Escenario' : 'Proyección'}</span><b>${pct(growth)}</b></div>`;
   });
+  $('#m-leg-p').textContent = (m.modeT === 'manual' || m.modeT1 === 'manual') ? 'Escenario' : 'Requerida';
   drawMobileChart(m);
   renderSource();
 }
@@ -2198,7 +2292,7 @@ function bindMobile() {
 if (STANDALONE) {
   $('#btn-mine').textContent = 'Usar datos del repositorio'; $('#m-mine').textContent = 'Usar datos del repositorio';
   $('#m-note').textContent = 'Para tener los mismos datos en todos tus dispositivos, sube el Excel al repositorio con el nombre datos.xlsx. Un archivo cargado aquí queda solo en este dispositivo.';
-  $('#m-foot').textContent = 'PIB desestacionalizado. Para ver la actividad y las tasas manuales, abre esta página en el computador.';
+  $('#m-foot').textContent = 'PIB desestacionalizado. Para ver la actividad, abre esta página en el computador.';
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 restore();
@@ -2209,7 +2303,7 @@ connectCloud();
 ['ch-gl', 'ch-gg', 'ch-al', 'ch-ag'].forEach(bindHover);
 let rz = null;
 if (window.ResizeObserver) {
-  const ro = new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (isMobile()) { if (res) drawMobileChart(computeAll(cc, Object.assign({}, S, { gdp: IMPL(), act: IMPL() })).gdp); } else drawAll(); }); });
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (isMobile()) { if (res && cc) drawMobileChart(mobileRes()); } else drawAll(); }); });
   ro.observe($('.views')); ro.observe($('#m-chart'));
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!isMobile()) drawAll(); });
