@@ -782,7 +782,13 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px colo
             <p><b>Dinámica requerida del PIB.</b> Variación t/t constante desde el último trimestre publicado que hace que el año crezca lo proyectado. Se calcula solo con el PIB y se resuelve en forma exacta; en Excel equivale a:</p>
             <div class="fx">=TASA(n; −X(último); 0; (1+proy)·Σ X(año−1) − Σ observados; 1)</div>
           </div>
-          <div><p><b>Actividad.</b> El mismo ejercicio con la serie mensual: último mes constante para el arrastre y m/m constante para que la actividad crezca lo mismo que la proyección del PIB. La actividad no se mueve 1 a 1 con el PIB; el supuesto da una referencia del ritmo mensual coherente con la proyección.</p></div>
+          <div>
+            <p><b>Actividad.</b> Mismas fórmulas que la hoja de cálculo del arrastre de la actividad, con la proyección del PIB como meta (supuesto 1 a 1). n son los meses del año sin dato y la base es el promedio de los meses con dato del año anterior.</p>
+            <div class="fx">arrastre = ((Σ datos del año + n · último dato)/12) / base − 1</div>
+            <div class="fx">dinámica = ((1+proy)/(1+arrastre))^(24/(n(n+1))) − 1</div>
+            <div class="fx">arrastre(año+1) = último·(1+dinámica)ⁿ / prom. del año − 1;  dinámica(año+1) con n = 12</div>
+            <p>Es una aproximación: con esa tasa la actividad crece cerca de la proyección, no exactamente; el escenario muestra la cifra que resulta.</p>
+          </div>
           <div>
             <p><b>Año siguiente.</b> El arrastre es el nivel del 4T (PIB) o de diciembre (actividad) del escenario del año en curso, mantenido todo el año. La dinámica requerida es la tasa constante desde ese nivel.</p>
             <div class="fx">arrastre(año+1) = P · X(último período del año) / Σ X(año) − 1, con P = 4 o 12</div>
@@ -1069,13 +1075,18 @@ function makeBlock(series, P, T) {
   if (last < (T - 1) * P - 1) return { error: `termina antes de ${T - 1}` };
   const obs = {};
   series.v.forEach((v, i) => { const k = series.start + i; if (k <= last) obs[k] = v; });
-  const rem = []; for (let k = last + 1; k <= T * P + P - 1; k++) rem.push(k);
+  // rem: períodos sin dato del año en curso. gap: períodos sin dato del año anterior (solo puede
+  // ocurrir en la actividad); se muestran con el último nivel y no entran en los cálculos tipo Excel
+  const remStart = Math.max(last + 1, T * P);
+  const gap = []; for (let k = last + 1; k < remStart; k++) gap.push(k);
+  const rem = []; for (let k = remStart; k <= T * P + P - 1; k++) rem.push(k);
   const next = []; for (let k = (T + 1) * P; k <= (T + 1) * P + P - 1; k++) next.push(k);
-  return { P, T, start: series.start, last, obs, rem, next, truncated: endData > last };
+  return { P, T, start: series.start, last, obs, gap, rem, next, truncated: endData > last };
 }
 function blockPath(b, ratesRem, ratesNext) {
   const L = Object.assign({}, b.obs);
   let lvl = b.obs[b.last];
+  (b.gap || []).forEach(k => { L[k] = lvl; });
   b.rem.forEach((k, i) => { lvl *= 1 + ratesRem[i] / 100; L[k] = lvl; });
   b.next.forEach((k, i) => { lvl *= 1 + ratesNext[i] / 100; L[k] = lvl; });
   return L;
@@ -1134,13 +1145,56 @@ function trendDefaults(cc) {
   return { projT: round(growthY(path, P, g.T)), projT1: round(growthY(path, P, g.T + 1)) };
 }
 
+// Actividad mensual: mismas fórmulas que la hoja «arrastre act» (filas 30 a 40)
+//   n      = meses del año sin dato                          (fila 36: 12 − CONTAR)
+//   último = último dato publicado                           (fila 37)
+//   base   = PROMEDIO de los meses con dato del año anterior (AVERAGE ignora vacíos)
+//   arrastre       = ((Σ datos del año + n·último)/12) / base − 1                (fila 30)
+//   dinámica       = ((1+proy)/(1+arrastre))^(24/(n(n+1))) − 1                   (fila 31)
+//   nivel dic.     = último·(1+dinámica)^n                                         (fila 38)
+//   suma restante  = último·(1+d)·((1+d)^n − 1)/d                                   (fila 39)
+//   prom. del año  = (Σ datos del año + suma restante)/12                          (fila 40)
+//   arrastre año+1 = nivel dic./prom. del año − 1                                  (fila 32)
+//   dinámica año+1 = ((1+proy)/(1+arrastre))^(24/(12·13)) − 1                      (fila 33)
+function solveActExcel(b, bs, projT, projT1) {
+  const T = b.T, P = 12, n = b.rem.length, last = b.obs[b.last];
+  const man = (a, m) => (Array.isArray(a) && a.length === m && a.every(isFinite)) ? a.slice() : null;
+  let sumObsT = 0;
+  for (let k = T * 12; k <= Math.min(b.last, T * 12 + 11); k++) sumObsT += b.obs[k];
+  const prev = [];
+  for (let k = (T - 1) * 12; k <= Math.min(b.last, (T - 1) * 12 + 11); k++) if (isFinite(b.obs[k])) prev.push(b.obs[k]);
+  const base = prev.reduce((a, v) => a + v, 0) / prev.length;
+  const carryT = (((sumObsT + n * last) / 12) / base - 1) * 100;
+  const reqT = n > 0 ? (Math.pow((1 + projT / 100) / (1 + carryT / 100), 24 / (n * (n + 1))) - 1) * 100 : null;
+  const manT = man(bs.manualT, n), manT1 = man(bs.manualT1, P);
+  let ratesT, modeT = 'impl';
+  if (!n) { ratesT = []; modeT = 'none'; }
+  else if (bs.pathT === 'manual' && manT) { ratesT = manT; modeT = 'manual'; }
+  else ratesT = fill(n, reqT);
+  const L0 = blockPath(b, ratesT, fill(P, 0));
+  let sumRest = 0; b.rem.forEach(k => { sumRest += L0[k]; });
+  const avgT = (sumObsT + sumRest) / 12;
+  const decT = L0[T * 12 + 11];
+  const growthT = (avgT / base - 1) * 100;
+  const carryT1 = (decT / avgT - 1) * 100;
+  const reqT1 = (Math.pow((1 + projT1 / 100) / (1 + carryT1 / 100), 24 / (12 * 13)) - 1) * 100;
+  let ratesT1, modeT1 = 'impl';
+  if (bs.pathT1 === 'manual' && manT1) { ratesT1 = manT1; modeT1 = 'manual'; }
+  else ratesT1 = fill(P, reqT1);
+  const L = blockPath(b, ratesT, ratesT1);
+  const growthT1 = (sumY(L, P, T + 1) / 12 / avgT - 1) * 100;
+  const endT = (L[T * 12 + 11] / L[(T - 1) * 12 + 11] - 1) * 100;
+  const endT1 = (L[(T + 1) * 12 + 11] / L[T * 12 + 11] - 1) * 100;
+  return { b, L, base, avgT, carryT, reqT, ratesT, okT: true, modeT, growthT, carryT1, reqT1, ratesT1, okT1: true, modeT1, growthT1, endT, endT1, approx: true };
+}
+
 function computeAll(cc, st) {
   const gdp = solveBlock(cc.g, st.gdp, st.projT, st.projT1);
-  const act = cc.a ? solveBlock(cc.a, st.act, st.projT, st.projT1) : null;
+  const act = cc.a ? solveActExcel(cc.a, st.act, st.projT, st.projT1) : null;
   return { T: cc.T, gdp, act };
 }
 
-if (typeof module !== 'undefined') module.exports = { parseNum, parseMonth, parseQuarterStr, parseDateCell, parseSheet, toSeries, buildDataset, makeBlock, blockPath, solveBlock, buildCountry, computeAll, trendDefaults, growthY, sumY, qLabel, mLabel, fill, solveRate };
+if (typeof module !== 'undefined') module.exports = { solveActExcel, parseNum, parseMonth, parseQuarterStr, parseDateCell, parseSheet, toSeries, buildDataset, makeBlock, blockPath, solveBlock, buildCountry, computeAll, trendDefaults, growthY, sumY, qLabel, mLabel, fill, solveRate };
 
 
 const EXAMPLE = {"fileName":null,"countries":[{"name":"País A","gdp":{"start":8072,"v":[47500,47975,48262.8,48504.2,48649.7,48990.2,49235.2,47758.1,47949.2,41476,43757.2,46732.7,48368.3,48948.8,51200.4,51610,51403.6,51146.5,50788.5,50585.4,50939.5,50735.7,50938.6,51091.5,51908.9,51753.2,52063.7,52272,52690.1,52795.5,53112.3,53271.6,53484.7,53752.1]},"act":{"start":24216,"v":[100.81,99.77,99.42,100.15,101.03,102.06,102.11,101.41,101.53,101.74,101.73,102.29,102.25,102.09,102.08,102.73,102.84,103.01,103.33,103.2,103.93,102.28,100.13,98.27,99.51,100.74,101.78,93.41,85.79,78.59,84.62,91.03,97,97.44,98.01,97.93,99.86,101.79,103.59,103.86,102.94,102.41,105.37,108.64,110.6,109.84,109.81,109.17,109.32,108.64,109.22,108.96,108.79,107.56,107.76,107.75,107.58,107.5,106.98,107.1,107.53,107.8,108.18,107.85,107.29,107.05,107.4,107.64,108.01,107.69,107.82,108.15,108.84,109.66,110.03,109.72,109.08,108.82,109.08,109.92,110.44,110.71,110.91,110.34,110.94,111.52,111.58,111.46,111.85,111.58,112.45,111.84,112.07,111.67,113.17,112.65,112.86,113.4,113.46,113.47,113.6,114.07,114.36,114.41]}},{"name":"País B","gdp":{"start":8072,"v":[182000,183456,184740.2,185848.6,186777.9,187898.5,188650.1,184499.8,182654.8,151603.5,165247.8,172684,177001.1,180541.1,183068.7,185265.5,186932.9,188054.5,188618.7,188807.3,189184.9,190130.8,191271.6,192610.5,194344,195898.7,197074.1,198453.7,199445.9,201240.9,202649.6,203865.5,204681,205295]},"act":{"start":24216,"v":[98.77,101,100.23,100.64,100.82,100.63,101.55,101.45,101.58,101.9,102.46,102.25,102.45,102.05,102.77,102.97,103.01,103.48,103.41,103.45,103.93,103.1,100.56,99.82,99.62,100.04,100.14,90.86,81.27,72.7,80.18,88.7,99.23,96.71,93.84,91.46,93.92,96.37,99.17,99.07,98.83,98.62,99.71,100.31,101.04,102.57,100.34,101.83,102.16,102.66,102.43,102.73,103.23,103.21,103.05,103.39,103.07,102.91,103.11,102.94,102.91,103.1,103.75,103.28,103.77,104.02,103.83,104.76,104.82,104.61,105.89,105.28,105.58,106.08,106.4,106.66,106.8,107.6,107.15,107.6,108.28,108.39,108.72,108.73,108.79,108.53,110.05,109.89,110.15,110.66,110.93,111.5,110.45,110.44,112.42,112.15,111.57,112.24,112.16,112.93,112.28,112.89,113]}},{"name":"País C","gdp":{"start":8072,"v":[33100,33298.6,33465.1,33699.3,33800.4,33868,34003.5,33493.5,32656.1,29553.8,31622.6,32571.2,33287.8,33654,33822.2,34160.5,34262.9,34194.4,34194.4,34331.2,34537.2,34778.9,34952.8,35232.5,35338.2,35479.5,35798.8,35977.8,36193.7,36338.5,36411.1,36593.2,36849.4]},"act":{"start":24216,"v":[101.31,98.62,100.08,99.71,100.66,100.81,101.18,100.69,101.26,101.31,102.07,101.63,102.73,101.61,101.5,101.64,102.06,102.54,102.95,102.57,101.75,101.08,101.04,100.52,98.88,98.81,96.67,92.73,87.56,84.13,89.75,94.65,99.91,98.46,98.16,96.84,98.42,99.52,102.05,102.15,101.48,100.29,100.86,101.55,103.18,103.34,102.6,103.54,103.09,104.01,102.9,102.73,102.78,104.03,102.99,103.78,102.5,103.11,103.13,104.68,104.7,103.9,103.63,104.4,104.32,105.83,106.62,104.55,104.72,105.26,106.27,106.65,106.83,106.06,106.15,106.73,107.47,107.22,107.02,108.77,109.08,109.14,107.83,109.6,109.46,109.04,109.74,109.9,109.77,109.78,110.4,109.55,110.64,110.38,111.74,110.15,110.32,111.25,112.65]}}]};
@@ -1761,6 +1815,7 @@ function syncBlocks() {
     if (mode === 'none') el.innerHTML = `La actividad ya cubre todo ${T}: crece <b>${pct(g)}</b>.`;
     else if (mode === 'manual') el.innerHTML = `Tasas manuales: ${d.blk === 'gdp' ? 'el PIB' : 'la actividad'} crece <b>${pct(g)}</b> en ${yr}, ${gapText(g - proj)} la proyección. «Requerida» o un cambio de proyección vuelven a la tasa constante.`;
     else if (!ok) el.innerHTML = `<span class="warnline">Ninguna tasa constante razonable logra ${pct(proj)} en ${yr}.</span>`;
+    else if (r.approx) el.innerHTML = `Tasa constante ${from} según la fórmula del Excel; con ella la actividad crece <b>${pct(g)}</b> en ${yr}.`;
     else el.innerHTML = `Tasa constante ${from} que logra ${pct(proj)} en ${yr}.`;
   });
 }
@@ -1776,9 +1831,10 @@ function cellReq(v, unit, k, recent, note) {
   if (v === null || v === undefined) return `<div class="mx-c req"><span class="val">–</span><span class="note${note ? '' : ' warnline'}">${note || 'Fuera de rango'}</span></div>`;
   return `<div class="mx-c req"><span class="val">${pct(v)}<small>${unit}</small></span><span class="note">${pct(ann(v, k), 1)} anualizada${recent ? `<br>${recent}` : ''}</span></div>`;
 }
-function cellScen(g, proj, mode, endTxt, reset) {
+function cellScen(g, proj, mode, endTxt, reset, approx) {
   if (mode === 'manual') return `<div class="mx-c man"><span class="val">${pct(g)}<small>manual</small></span><span class="note">Tasas manuales: ${gapText(g - proj)} la proyección</span><button class="linkbtn" type="button" data-reset="${reset}">Usar dinámica requerida</button></div>`;
-  const status = mode === 'none' ? 'Dato completo' : 'Cumple la proyección';
+  const status = mode === 'none' ? 'Dato completo'
+    : (approx && Math.abs(g - proj) >= 0.005) ? `Fórmula del Excel: ${gapText(g - proj)} la proyección` : 'Cumple la proyección';
   return `<div class="mx-c"><span class="val">${pct(g)}</span><span class="note">${status}<br>${endTxt}</span></div>`;
 }
 function wfGroup(title, rows, P) {
@@ -1826,7 +1882,7 @@ function renderResumen() {
     h += `<div class="mx-r">Actividad<small>${hasRem ? pRange(12, cc.a.rem[0], cc.a.rem[cc.a.rem.length - 1]) + ' · m/m' : 'año completo'}</small></div>`;
     h += cellCarry(a.carryT, hasRem ? `Nivel de ${mLabel(cc.a.last)} constante` : 'Año completo');
     h += hasRem ? cellReq(a.reqT, 'm/m', 12, recA) : cellReq(null, '', 12, '', 'Sin meses por proyectar');
-    h += cellScen(a.growthT, S.projT, a.modeT, `dic/dic ${pct(a.endT, 1)}`, 'act:T');
+    h += cellScen(a.growthT, S.projT, a.modeT, `dic/dic ${pct(a.endT, 1)}`, 'act:T', a.approx);
   } else {
     h += `<div class="mx-r">Actividad</div><div class="mx-c mx-na" style="grid-column: span 3">${esc(cc.actNote || 'Sin serie de actividad')}</div>`;
   }
@@ -1842,7 +1898,7 @@ function renderResumen() {
     h1 += `<div class="mx-r">Actividad<small>ene–dic · m/m</small></div>`;
     h1 += cellCarry(a.carryT1, `Nivel de dic ${T} del escenario`);
     h1 += cellReq(a.reqT1, 'm/m', 12, '');
-    h1 += cellScen(a.growthT1, S.projT1, a.modeT1, `dic/dic ${pct(a.endT1, 1)}`, 'act:N');
+    h1 += cellScen(a.growthT1, S.projT1, a.modeT1, `dic/dic ${pct(a.endT1, 1)}`, 'act:N', a.approx);
   }
   const wfN = `<div class="wf-wrap"><div class="wf-title">Composición del crecimiento, pp</div>${wfGroup('PIB', W.gN, P)}${a ? wfGroup('Actividad', W.aN, P) : ''}</div>`;
   $('#yc-T1').innerHTML = `<div class="card-h"><h2><span class="yr">${T + 1}</span>Año siguiente</h2><span class="aside">Proyección <b>${pct(S.projT1)}</b> · arrastre desde el escenario de ${T}</span></div><div class="mx">${h1}</div>${wfN}`;
@@ -1885,7 +1941,7 @@ function drawLevel(id, r) {
   const b = r.b, P = b.P, T = b.T, L = r.L, m = { l: 44, r: 10, t: 14, b: 22 };
   const k0 = Math.max(b.start, (T - (P === 4 ? 3 : 2)) * P), k1 = (T + 1) * P + P - 1, n = k1 - k0 + 1;
   const bw = (W - m.l - m.r) / n, X = k => m.l + (k - k0 + 0.5) * bw;
-  const base = sumY(L, P, T - 1) / P, I = v => v / base * 100;
+  const base = r.base || sumY(L, P, T - 1) / P, I = v => v / base * 100;
   const endT = T * P + P - 1, c0 = I(L[b.last]), c1 = I(L[endT]);
   const vals = [c0, c1];
   for (let k = k0; k <= k1; k++) vals.push(I(L[k]));
@@ -2000,7 +2056,7 @@ function bindHover(id) {
 
 /* ---------- Tablas (formato ancho: períodos en filas, años en columnas) ---------- */
 function tableWide(r) {
-  const b = r.b, P = b.P, T = b.T, L = r.L, base = sumY(L, P, T - 1) / P;
+  const b = r.b, P = b.P, T = b.T, L = r.L, base = r.base || sumY(L, P, T - 1) / P;
   const years = [T - 1, T, T + 1], vn = P === 4 ? 't/t' : 'm/m';
   let h = `<thead><tr><th></th>${years.map(y => `<th colspan="3" class="g0">${y}</th>`).join('')}</tr><tr><th>${P === 4 ? 'Trim.' : 'Mes'}</th>${years.map(() => `<th class="g0">Índice</th><th>${vn}</th><th>a/a</th>`).join('')}</tr></thead><tbody>`;
   for (let j = 0; j < P; j++) {
@@ -2027,7 +2083,7 @@ function renderTables() {
 }
 function copySeries(r, btn) {
   if (!r) return;
-  const b = r.b, P = b.P, T = b.T, L = r.L, base = sumY(L, P, T - 1) / P;
+  const b = r.b, P = b.P, T = b.T, L = r.L, base = r.base || sumY(L, P, T - 1) / P;
   const f = (v, k = 2) => (v === null || v === undefined || !isFinite(v)) ? '' : v.toFixed(k);
   const name = (dataset.countries.find(c => keyOf(c) === curKey) || {}).name || '';
   const lines = [`País\tPeríodo\tNivel\tÍndice (prom. ${T - 1} = 100)\t${P === 4 ? 't/t' : 'm/m'} %\ta/a %\tOrigen`];
